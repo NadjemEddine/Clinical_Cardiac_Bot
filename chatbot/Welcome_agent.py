@@ -1,3 +1,4 @@
+import os
 from langchain_core.prompts import ChatPromptTemplate
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -68,10 +69,7 @@ class Assistant:
 def create_agent():
     # llm = ChatGoogleGenerativeAI(
     #     model="gemini-2.5-flash-lite",
-    #     #api_key="AIzaSyAfDC-XGVb9ryr7aHZaKafy9CzUzjH7EoE"
-    #     #api_key="AIzaSyAbCBaEwm76VKV7r_Qw4GP9GswU8IIj4BE",
-    #     # api_key="AIzaSyBTvWFMnrFM27Nfsg7T9EUAXKGr9IGeGGw",
-    #     api_key="AIzaSyCZ5YHIkwpQM5gUCVAM0BSsgPTcOubO1i8"
+    #     api_key=os.getenv("GEMINI_API_KEY")
     # )
     llm = ChatDeepSeek(
         model="deepseek-chat",
@@ -79,7 +77,7 @@ def create_agent():
         max_tokens=None,
         timeout=None,
         max_retries=2,
-        api_key="sk-9cc1219345e14214986f269570ce8da2",
+        api_key=os.getenv("DEEPSEEK_API_KEY"),
 
     )
 
@@ -89,11 +87,10 @@ def create_agent():
     #     request_timeout=300,
     #     base_url="http://localhost:11434",
     # )
-    #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
     # llm = ChatOpenAI(
     #     temperature=0.7,
     #     model="mistralai/devstral-2512:free",
-    #     api_key="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",
+    #     api_key=os.getenv("OPENROUTER_API_KEY"),
     #     base_url="https://openrouter.ai/api/v1",
     # )
     

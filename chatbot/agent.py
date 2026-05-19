@@ -1,3 +1,4 @@
+import os
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -76,14 +77,14 @@ class Assistant:
 
     
 def create_agent():
-    # llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key="AIzaSyAfDC-XGVb9ryr7aHZaKafy9CzUzjH7EoE")
+    # llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", api_key=os.getenv("GEMINI_API_KEY"))
     llm = ChatDeepSeek(
         model="deepseek-chat",
         temperature=1.3,
         max_tokens=None,
         timeout=None,
         max_retries=2,
-        api_key="sk-9cc1219345e14214986f269570ce8da2",
+        api_key=os.getenv("DEEPSEEK_API_KEY"),
 
     )
     primary_assistant_prompt = ChatPromptTemplate.from_messages(
