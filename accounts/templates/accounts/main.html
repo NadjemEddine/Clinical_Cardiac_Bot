@@ -1,0 +1,117 @@
+
+{% extends 'accounts/base.html' %}
+{% load static %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+  <div class="header">
+    <div class="container">
+      <h1>Agentic AI Medical Assistant</h1>
+      <p>Revolutionizing healthcare with intelligent data collection and analysis.</p>
+      {% if user.is_authenticated %}
+        <a href="{% url 'profile' %}" class="btn btn-light btn-lg">Get Started</a>
+      {% else %}
+      <div class="cta-buttons">
+        <a href="{% url 'patient_register' %}" class="btn btn-light btn-lg">Get Started</a>
+        <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg">Login</a>
+      </div>
+      {% endif %}
+      
+    </div>
+  </div>
+
+  <!-- Features Carousel -->
+  <div class="features-carousel">
+    <div class="container">
+      <div id="featuresCarousel" class="carousel slide" data-bs-ride="carousel">
+        <div class="carousel-inner">
+          <div class="carousel-item active">
+            <h3>Collect Clinical Data</h3>
+            <p>Engage in friendly conversations to gather patient data effortlessly.</p>
+          </div>
+          <div class="carousel-item">
+            <h3>Control Medical Sensors</h3>
+            <p>Seamlessly integrate and manage medical devices for accurate data acquisition.</p>
+          </div>
+          <div class="carousel-item">
+            <h3>Validate Data Acquisition</h3>
+            <p>Ensure data accuracy with AI-powered validation based on medical knowledge.</p>
+          </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#featuresCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#featuresCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Next</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <section class="cvd-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <img src="{% static 'images/section01.jpg' %}" alt="CVD Image" class="img-fluid rounded">
+            </div>
+            <div class="col-md-6">
+                <h2 class="fw-bold">Cardiovascular Disease (CVD)</h2>
+                <p class="lead">
+                    Cardiovascular diseases (CVDs) are the leading cause of death globally, accounting for over 17 million deaths annually. 
+                    These diseases include heart attacks, strokes, and other conditions that affect the heart and blood vessels.
+                </p>
+                <p>
+                    Early detection and continuous monitoring are crucial for managing CVDs. Our AI-powered medical assistant helps patients 
+                    track their health metrics, provides real-time feedback, and ensures timely interventions to prevent complications.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="llm-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6 order-md-2">
+                <img src="{% static 'images/section02.jpg' %}" alt="AI in Medicine" class="img-fluid rounded">
+            </div>
+            <div class="col-md-6 order-md-1">
+                <h2 class="fw-bold">AI and Chatbots in Medicine</h2>
+                <p class="lead">
+                    Large Language Models (LLMs) and AI chatbots are revolutionizing the healthcare industry by providing 
+                    personalized medical assistance, automating administrative tasks, and improving patient outcomes.
+                </p>
+                <p>
+                    Our AI-powered chatbot can engage in natural conversations with patients, collect clinical data, 
+                    and provide actionable insights to healthcare providers. This ensures faster diagnosis and better 
+                    patient care.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+<section class="multi-agent-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <img src="{% static 'images/section03.jpg' %}" alt="Multi-Agent Systems" class="img-fluid rounded">
+            </div>
+            <div class="col-md-6">
+                <h2 class="fw-bold">Multi-Agent Systems in Healthcare</h2>
+                <p class="lead">
+                    Multi-agent systems (MAS) are transforming healthcare by enabling seamless coordination between 
+                    medical devices, AI systems, and healthcare providers.
+                </p>
+                <p>
+                    Our platform uses MAS to control medical hardware, such as sensors and diagnostic tools, ensuring 
+                    accurate data collection and real-time monitoring. This improves the efficiency of healthcare delivery 
+                    and enhances patient outcomes.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

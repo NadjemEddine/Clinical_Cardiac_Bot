@@ -1,0 +1,51 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Doctor: {{request.user.username}}{% endblock %}
+
+{% block content %}
+
+<div class="container py-5">
+        <h2 class="mb-4 text-center">Doctor Dashboard</h2>
+
+        {% if patients %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover bg-white shadow-sm">
+                <thead class="table-primary">
+                    <tr>
+                        <th>#</th>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Last Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>First Visit</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ patient.id }}</td>
+                        <td>{{ patient.username }}</td>
+                        <td>{{ patient.email }}</td>
+                        <td>{{ patient.date_of_birth }}</td>
+                        {% if patient.gender %}
+                        <td><i class="fas fa-male"></i></td>
+                        
+                        {% else %}
+                        <td><i class="fas fa-female"></i></td>
+                        {% endif %}
+                        <td>{{ patient.date_joined }}</td>
+                        <td><a href="patient/{{patient.id}}/">Details</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No patient data available.</p>
+        {% endif %}
+    </div>
+
+{% endblock content %}

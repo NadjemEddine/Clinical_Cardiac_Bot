@@ -1,0 +1,136 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="signup-container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="signup-card p-4 border-0 rounded shadow-lg bg-white">
+        <h2 class="mb-4 text-center fw-bold">Create Your Account</h2>
+        <p class="text-center text-muted mb-4">Join us in just a few simple steps.</p>
+
+        <form method="POST" class="needs-validation" novalidate>
+            {% csrf_token %}
+            <!-- Display form errors -->
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <strong>Error!</strong> Please correct the following:
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field|title }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+            <!-- Step 1: Basic Information -->
+            <div id="step1" class="form-step" style="display: true;">
+                <div class="mb-3">
+                    <label for="id_username" class="form-label">Username:</label>
+                    {{ form.username }}
+                    <div class="invalid-feedback">Please choose a username.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_email" class="form-label">Email:</label>
+                    {{ form.email }}
+                    <div class="invalid-feedback">Please enter a valid email.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_password1" class="form-label">Password:</label>
+                    {{ form.password1 }}
+                    <div class="invalid-feedback">Please create a password.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_confirm_password" class="form-label">Confirm Password:</label>
+                    {{ form.password2 }}
+                    <div class="invalid-feedback">Passwords do not match.</div>
+                </div>
+
+                <button type="button" class="btn btn-primary btn-lg w-100 mt-3 next-step">Next</button>
+            </div>
+
+            <!-- Step 2: Personal Data -->
+            <div id="step2" class="form-step" style="display: none;">
+                <div class="mb-3">
+                    <label for="id_first_name" class="form-label">First Name:</label>
+                    {{ form.first_name }}
+                    <div class="invalid-feedback">Please enter your first name.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_last_name" class="form-label">Last Name:</label>
+                    {{ form.last_name }}
+                    <div class="invalid-feedback">Please enter your last name.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_date_of_birth" class="form-label">Date of Birth:</label>
+                    {{ form.date_of_birth }}
+                    <div class="invalid-feedback">Please enter your date of birth.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_gender" class="form-label">Gender:</label>
+                    {{ form.gender }}
+                    <div class="invalid-feedback">Please select your gender.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_phone_number" class="form-label">Phone Number:</label>
+                    {{ form.phone_number }}
+                    <div class="invalid-feedback">Please enter your phone number.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_address" class="form-label">Address:</label>
+                    {{ form.address }}
+                    <div class="invalid-feedback">Please enter your address.</div>
+                </div>
+
+                <button type="button" class="btn btn-secondary btn-lg w-100 mt-3 prev-step">Previous</button>
+                <button type="submit" class="btn btn-primary btn-lg w-100 mt-3">Sign Up</button>
+            </div>
+        </form>
+
+        <div class="text-center mt-4">
+            <p class="text-muted">Already have an account? <a href="{% url 'login' %}" class="text-decoration-none fw-bold">Login</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Multi-Step Form -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const nextButton = document.querySelector('.next-step');
+    const prevButton = document.querySelector('.prev-step');
+
+    // Ensure Step 1 is visible by default
+    step1.style.display = 'block';
+    step2.style.display = 'none';
+
+    nextButton.addEventListener('click', function () {
+        const password = document.getElementById('id_password1').value;
+        const confirmPassword = document.getElementById('id_password2').value;
+
+        if (password !== confirmPassword) {
+            alert('Passwords do not match. Please try again.');
+            return;
+        }
+
+        step1.style.display = 'none';
+        step2.style.display = 'block';
+    });
+
+    prevButton.addEventListener('click', function () {
+        step2.style.display = 'none';
+        step1.style.display = 'block';
+    });
+});
+</script>
+{% endblock %}

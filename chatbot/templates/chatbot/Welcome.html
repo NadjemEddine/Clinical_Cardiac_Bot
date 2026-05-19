@@ -1,0 +1,64 @@
+{% extends 'accounts/base.html' %} 
+{% load static %} 
+{% block title %}Welcome,{{ request.user.username }}
+{% endblock %} 
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <!-- Welcome Message -->
+      <div class="text-center mb-4">
+        <h1 class="display-4">Welcome, {{ request.user.username }}!</h1>
+        <p class="lead">
+          Let's update your clinical data. Please answer the questions below.
+        </p>
+      </div>
+
+      <!-- Chat Interface -->
+      <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white">
+          <h5 class="card-title mb-0">Medical Assistant</h5>
+        </div>
+        <div class="card-body">
+          <!-- Chat Log -->
+          <div id="chat-log" class="chat-log mb-3">
+            <!-- Messages will be dynamically added here -->
+          </div>
+
+          <!-- Input Area -->
+          <div class="input-group">
+            <input
+              type="text"
+              id="message-input"
+              class="form-control"
+              placeholder="Type your response..."
+              aria-label="Type your response"
+            />
+            <div class="input-group-append">
+              <button id="send-button" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Include Font Awesome for Icons -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+/>
+
+<!-- Include CSS -->
+<link rel="stylesheet" href="{% static 'css/welcome.css' %}" />
+
+<!-- JavaScript -->
+<script>
+  const patient_id = "{{ request.user.id }}";
+</script>
+<script src="{% static 'js/welcome.js' %}"></script>
+
+{% endblock content %}

@@ -1,0 +1,605 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}
+    ECG Report
+{% endblock title %}
+
+{% block header %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.52.0/dist/apexcharts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>    
+    <style>
+        .ecg-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .ecg-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .ecg-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .ecg-info {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: #6c757d;
+            flex-wrap: wrap;
+        }
+        
+        .ecg-chart-wrapper {
+            position: relative;
+            background: #fafafa;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .ecg-grid {
+            background-image: 
+                linear-gradient(to right, #ff9999 0px, transparent 1px),
+                linear-gradient(to bottom, #ff9999 0px, transparent 1px),
+                linear-gradient(to right, #ffcccc 0px, transparent 1px),
+                linear-gradient(to bottom, #ffcccc 0px, transparent 1px);
+            background-size: 25px 25px, 25px 25px, 5px 5px, 5px 5px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            border-radius: 4px;
+        }
+        
+        #ecgChart {
+            position: relative;
+            z-index: 1;
+            background: transparent;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .control-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+        }
+        
+        .control-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .summary-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .summary-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .summary-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #ffd700;
+        }
+        
+        .summary-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .summary-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+        
+        @media (max-width: 768px) {
+            .ecg-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .ecg-info {
+                justify-content: flex-start;
+            }
+            
+            .controls {
+                justify-content: center;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock header %}
+    
+{% block content %}
+<div class="container-fluid">
+    <div class="ecg-container">
+        <div class="ecg-header">
+            <h1 class="ecg-title">
+                <i class="fas fa-heartbeat text-danger"></i>
+                ECG Report - {{ request.user.username }}
+            </h1>
+            <div class="ecg-info">
+                <span><i class="fas fa-calendar"></i> {{ ecg_record.created_at|date:"M d, Y" }}</span>
+                <span><i class="fas fa-clock"></i> {{ ecg_record.created_at|date:"H:i" }}</span>
+                <span><i class="fas fa-signal"></i> {{ sampling_rate }} Hz</span>
+            </div>
+        </div>
+        
+        <div class="ecg-chart-wrapper">
+            <div class="ecg-grid"></div>
+            <canvas id="ecgChart"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" id="scrollLeft">
+                <i class="fas fa-chevron-left"></i> Scroll Left
+            </button>
+            <button class="control-btn" id="zoomIn">
+                <i class="fas fa-search-plus"></i> Zoom In
+            </button>
+            <button class="control-btn" id="zoomOut">
+                <i class="fas fa-search-minus"></i> Zoom Out
+            </button>
+            <button class="control-btn" id="reset">
+                <i class="fas fa-undo"></i> Reset View
+            </button>
+            <button class="control-btn" id="scrollRight">
+                <i class="fas fa-chevron-right"></i> Scroll Right
+            </button>
+        </div>
+        
+        <div class="summary-container">
+            <h3 class="summary-title">
+                <i class="fas fa-chart-line"></i>
+                Clinical Summary
+            </h3>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">Average Heart Rate</div>
+                    <div class="summary-value" id="avgHeartRate">-- BPM</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">R-Peaks Detected</div>
+                    <div class="summary-value" id="rPeakCount">--</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Signal Duration</div>
+                    <div class="summary-value" id="signalDuration">-- sec</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Heart Rhythm</div>
+                    <div class="summary-value" id="heartRhythm">Normal</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ECG Arrhythmia Classification Section -->
+    <div class="ecg-container">
+        <h2 class="ecg-title">
+            <i class="fas fa-brain text-info"></i>
+            ECG Arrhythmia Classification
+        </h2>
+        <div id="ecg_Chart"></div>
+    </div>
+</div>
+
+<script>
+    // Data from Django
+    const ecgData = JSON.parse('{{ ecg_data|escapejs }}');
+    const samplingRate = {{ sampling_rate }};
+    let rPeaks = JSON.parse('{{ r_peaks|escapejs }}').filter(value => !isNaN(value));
+    let pPeaks = JSON.parse('{{ p_peaks|escapejs }}').filter(value => !isNaN(value));
+    let tPeaks = JSON.parse('{{ t_peaks|escapejs }}').filter(value => !isNaN(value));
+    let qPeaks = JSON.parse('{{ q_peaks|escapejs }}').filter(value => !isNaN(value));
+    let sPeaks = JSON.parse('{{ s_peaks|escapejs }}').filter(value => !isNaN(value));
+    const heartRate = JSON.parse('{{ heart_rate|escapejs }}');
+
+    // Chart configuration
+    let ecgChart;
+    let currentStartIndex = 0;
+    const windowSize = samplingRate * 10; // 10 seconds window
+    
+    // Initialize ECG Chart
+    function initializeECGChart() {
+        const ctx = document.getElementById('ecgChart').getContext('2d');
+        
+        // Time axis for the current window
+        const timeWindow = Array.from({length: windowSize}, (_, i) => 
+            (currentStartIndex + i) / samplingRate
+        );
+        
+        // ECG data for the current window
+        const ecgWindow = ecgData.slice(currentStartIndex, currentStartIndex + windowSize);
+        
+        ecgChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeWindow,
+                datasets: [{
+                    label: 'ECG Signal',
+                    data: ecgWindow,
+                    borderColor: '#000000',
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0
+                }, {
+                    label: 'R-Peaks',
+                    data: getRPeaksInWindow(),
+                    borderColor: '#ff0000',
+                    backgroundColor: '#ff0000',
+                    pointRadius: 4,
+                    pointStyle: 'triangle',
+                    showLine: false,
+                    type: 'scatter'
+                }, {
+                    label: 'P-Peaks',
+                    data: getPPeaksInWindow(),
+                    borderColor: '#00ff00',
+                    backgroundColor: '#00ff00',
+                    pointRadius: 3,
+                    pointStyle: 'circle',
+                    showLine: false,
+                    type: 'scatter'
+                }, {
+                    label: 'T-Peaks',
+                    data: getTPeaksInWindow(),
+                    borderColor: '#0000ff',
+                    backgroundColor: '#0000ff',
+                    pointRadius: 3,
+                    pointStyle: 'circle',
+                    showLine: false,
+                    type: 'scatter'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'Time (seconds)',
+                            color: '#2c3e50',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        ticks: {
+                            color: '#2c3e50',
+                            maxTicksLimit: 11
+                        },
+                        grid: {
+                            display: false // We're using CSS grid background
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Amplitude (mV)',
+                            color: '#2c3e50',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        ticks: {
+                            color: '#2c3e50'
+                        },
+                        grid: {
+                            display: false // We're using CSS grid background
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            color: '#2c3e50',
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: 'white',
+                        bodyColor: 'white',
+                        borderColor: '#007bff',
+                        borderWidth: 1
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+        
+        // Set chart height
+        document.getElementById('ecgChart').style.height = '400px';
+        
+        updateSummary();
+    }
+    
+    // Helper functions for peak data
+    function getRPeaksInWindow() {
+        return rPeaks
+            .filter(peak => peak >= currentStartIndex && peak < currentStartIndex + windowSize)
+            .map(peak => ({
+                x: peak / samplingRate,
+                y: ecgData[peak]
+            }));
+    }
+    
+    function getPPeaksInWindow() {
+        return pPeaks
+            .filter(peak => peak >= currentStartIndex && peak < currentStartIndex + windowSize)
+            .map(peak => ({
+                x: peak / samplingRate,
+                y: ecgData[peak]
+            }));
+    }
+    
+    function getTPeaksInWindow() {
+        return tPeaks
+            .filter(peak => peak >= currentStartIndex && peak < currentStartIndex + windowSize)
+            .map(peak => ({
+                x: peak / samplingRate,
+                y: ecgData[peak]
+            }));
+    }
+    
+    // Update chart window
+    function updateChart() {
+        const timeWindow = Array.from({length: windowSize}, (_, i) => 
+            (currentStartIndex + i) / samplingRate
+        );
+        const ecgWindow = ecgData.slice(currentStartIndex, currentStartIndex + windowSize);
+        
+        ecgChart.data.labels = timeWindow;
+        ecgChart.data.datasets[0].data = ecgWindow;
+        ecgChart.data.datasets[1].data = getRPeaksInWindow();
+        ecgChart.data.datasets[2].data = getPPeaksInWindow();
+        ecgChart.data.datasets[3].data = getTPeaksInWindow();
+        
+        ecgChart.update('none');
+        
+        // Update button states
+        document.getElementById('scrollLeft').disabled = currentStartIndex <= 0;
+        document.getElementById('scrollRight').disabled = 
+            currentStartIndex + windowSize >= ecgData.length;
+    }
+    
+    // Update summary information
+    function updateSummary() {
+        const avgHeartRate = heartRate.reduce((a, b) => a + b, 0) / heartRate.length;
+        const signalDuration = ecgData.length / samplingRate;
+        
+        document.getElementById('avgHeartRate').textContent = Math.round(avgHeartRate);
+        document.getElementById('rPeakCount').textContent = rPeaks.length;
+        document.getElementById('signalDuration').textContent = signalDuration.toFixed(1);
+        
+        // Determine heart rhythm based on heart rate variability
+        const hrVariability = Math.max(...heartRate) - Math.min(...heartRate);
+        document.getElementById('heartRhythm').textContent = 
+            hrVariability < 20 ? 'Regular' : 'Irregular';
+    }
+    
+    // Event listeners
+    document.getElementById('scrollLeft').addEventListener('click', () => {
+        if (currentStartIndex > 0) {
+            currentStartIndex = Math.max(0, currentStartIndex - windowSize / 2);
+            updateChart();
+        }
+    });
+    
+    document.getElementById('scrollRight').addEventListener('click', () => {
+        if (currentStartIndex + windowSize < ecgData.length) {
+            currentStartIndex = Math.min(
+                ecgData.length - windowSize, 
+                currentStartIndex + windowSize / 2
+            );
+            updateChart();
+        }
+    });
+    
+    document.getElementById('reset').addEventListener('click', () => {
+        currentStartIndex = 0;
+        updateChart();
+    });
+    
+    // Initialize chart when page loads
+    document.addEventListener('DOMContentLoaded', initializeECGChart);
+</script>
+
+<script>
+        // JavaScript to render the ECG chart using ApexCharts
+        document.addEventListener('DOMContentLoaded', function() {
+    // Prepare the data
+var time = Array.from({length: {{ full_signal | length }}}, (_, i) => i / 250);    
+var ecg_Data = JSON.parse('{{ full_signal|escapejs }}'); // Changed from ecg_Data = ecgData to var ecg_Data = ecgData
+    
+
+    // Combine time and ECG data into a series format for ApexCharts
+    var seriesData = time.map((t, i) => [t, ecg_Data[i]]);
+
+            // Define annotations for each segment
+            var annotations = {
+                xaxis: [
+                    {% for segment in segment_metadata %}
+                        {
+                            x: {{ segment.start_idx }} / 250, // Start time in seconds
+                            x2: {{ segment.end_idx }} / 250,  // End time in seconds
+                            fillColor: {% if segment.label == 'AFib' %}'rgba(255, 99, 132, 0.1)'{% elif segment.label == 'AT' %}'rgba(54, 162, 235, 0.1)'{% elif segment.label == 'AF4' %}'rgba(255, 206, 86, 0.1)'{% else %}'rgba(75, 192, 192, 0.1)'{% endif %}, // Color based on label
+                            borderColor: {% if segment.label == 'AFib' %}'rgba(255, 99, 132, 0.5)'{% elif segment.label == 'AT' %}'rgba(54, 162, 235, 0.5)'{% elif segment.label == 'AF4' %}'rgba(255, 206, 86, 0.5)'{% else %}'rgba(75, 192, 192, 0.5)'{% endif %}, // Matching border color
+                            opacity: 0.5,
+                            label: {
+                                text: '{{ segment.label }}',
+                                position: 'top',
+                                style: {
+                                    color: '#333',
+                                    background: 'rgba(255, 255, 255, 0.8)',
+                                    fontSize: '12px',
+                                    fontFamily: 'Arial'
+                                }
+                            }
+                        },
+                    {% endfor %}
+                ]
+            };
+
+            // Define the chart options
+            var options = {
+                series: [{
+                    name: 'ECG Signal (mV)',
+                    data: seriesData
+                }],
+                chart: {
+                    type: 'line',
+                    height: 400,
+                    zoom: {
+                        enabled: true,
+                        type: 'x',
+                        autoScaleYaxis: true
+                    },
+                    toolbar: {
+                        show: true,
+                        tools: {
+                            download: true,
+                            selection: true,
+                            zoom: true,
+                            zoomin: true,
+                            zoomout: true,
+                            pan: true,
+                            reset: true
+                        }
+                    }
+                },
+                stroke: {
+                    curve: 'straight',
+                    width: 1.5,
+                    colors: ['#1f77b4'] // Professional blue color
+                },
+                title: {
+                    text: '60-Second ECG Signal with Arrhythmia Classifications',
+                    align: 'center',
+                    style: {
+                        fontSize: '18px',
+                        fontFamily: 'Arial',
+                        color: '#333'
+                    }
+                },
+                xaxis: {
+                    title: {
+                        text: 'Time (seconds)',
+                        style: {
+                            fontSize: '14px',
+                            fontFamily: 'Arial'
+                        }
+                    },
+                    labels: {
+                        formatter: function(val) {
+                            return val.toFixed(1);
+                        }
+                    },
+                    tickAmount: 12 // Show ~1 tick per 5 seconds
+                },
+                yaxis: {
+                    title: {
+                        text: 'Amplitude (mV)',
+                        style: {
+                            fontSize: '14px',
+                            fontFamily: 'Arial'
+                        }
+                    },
+                },
+                annotations: annotations,
+                grid: {
+                    borderColor: '#e7e7e7'
+                },
+                tooltip: {
+                    x: {
+                        format: 'dd MMM yyyy HH:mm:ss'
+                    }
+                }
+            };
+
+            // Render the chart
+            var chart = new ApexCharts(document.querySelector("#ecg_Chart"), options);
+            chart.render();
+        });
+    </script>
+{% endblock content %}
+
+

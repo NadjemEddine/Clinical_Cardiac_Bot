@@ -1,0 +1,270 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="{% static 'css/medical_scores.css' %}">
+{% endblock head %}
+
+{% block title %}Cardiovascular Risk Dashboard{% endblock title %}
+
+
+{% block content %}
+
+
+
+
+
+<!-- Card Container -->
+<div class="bg-white rounded-xl shadow p-6 max-w-5xl mx-auto mt-8">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-blue-700 flex items-center">
+      <i class="fas fa-chart-line mr-2"></i> Risk Score Dashboard
+    </h2>
+    <select id="scoreSelector" class="border border-gray-300 rounded px-3 py-1 text-sm">
+      <option value="framingham_score">Framingham</option>
+      <option value="ascvd_score">ASCVD</option>
+      <option value="qrisk3_score">QRISK3</option>
+      <option value="chads2_score">CHADS2</option>
+      <option value="cha2ds2_vasc_score">CHA2DS2-VASc</option>
+      <option value="has_bled_score">HAS-BLED</option>
+    </select>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid md:grid-cols-3 gap-6 items-start">
+    <!-- Chart and Risk % -->
+    <div class="flex flex-col items-center">
+      <div id="chartWrap" class="relative w-full max-w-md mx-auto h-56">
+          <canvas id="riskChart"></canvas>
+      </div>
+      <h4 id="scorePercent" class="text-2xl font-bold mt-4">--%</h4>
+      <p class="text-sm text-gray-500">Risk Level</p>
+      <span id="riskBadge" class="mt-2 inline-block px-3 py-1 rounded-full text-sm font-medium">--</span>
+    </div>
+
+    <!-- Interpretation -->
+    <div class="md:col-span-2">
+      <h5 class="text-blue-600 font-semibold mb-2 flex items-center">
+        <i class="fas fa-info-circle mr-2"></i> Interpretation
+      </h5>
+      <p id="interpretationText" class="text-gray-700 mb-2">--</p>
+      <p id="descriptionText" class="text-gray-600 text-sm">
+        This score helps estimate the risk level for specific cardiovascular or stroke outcomes based on patient-specific clinical parameters.
+      </p>
+    </div>
+  </div>
+
+  <!-- Recommendations -->
+  <div class="mt-8">
+    <h5 class="text-green-600 font-semibold mb-3 flex items-center">
+      <i class="fas fa-clipboard-list mr-2"></i> Recommendations
+    </h5>
+    <div id="recommendations" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Will be populated dynamically -->
+    </div>
+  </div>
+</div>
+
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* ---------- 1) Source data (unchanged from your server) ---------- */
+const scoresData = {
+  framingham_score: {
+    value: {{framingham_score.risk_percentage}},
+    description: "{{framingham_score.risk_description}}",
+    interpretation: " {% for exp in framingham_score.explanation %}{{exp}} * {% endfor %} ",
+    badge: { text: "{{framingham_score.risk_category}}", color: "bg-yellow-100 text-yellow-800" },
+    recommendations: [
+      {% for rm in framingham_score.recommendations %}{ icon: "fa-heart", text: "{{rm}}"},{% endfor %}
+    ],
+    influences:"{{framingham_score.influences}}",
+    most_influential: "{{framingham_score.most_influential}}",
+  },
+  ascvd_score: {
+    value: {{ascvd_score.risk_percentage}},
+    description: "{{ascvd_score.risk_description}}",
+    interpretation: " {% for exp in ascvd_score.explanation %}{{exp}} * {% endfor %} ",
+    badge: { text: "{{ascvd_score.risk_category}}", color: "bg-red-100 text-red-700" },
+    recommendations: [
+      {% for rm in ascvd_score.recommendations %}{ icon: "fa-heart", text: "{{rm}}"},{% endfor %}
+    ]
+  },
+  qrisk3_score: {
+    value: {{qrisk3_score.risk_percentage}},
+    description: "{{qrisk3_score.risk_description}}",
+    interpretation: " {% for exp in qrisk3_score.explanation %}{{exp}} * {% endfor %} ",
+    badge: { text: "{{qrisk3_score.risk_category}}", color: "bg-red-100 text-red-700" },
+    recommendations: [
+      {% for rm in qrisk3_score.recommendations %}{ icon: "fa-heart", text: "{{rm}}"},{% endfor %}
+    ]
+  },
+  chads2_score: {
+    value: {{chads2_score.risk_percentage}},
+    description: "{{chads2_score.risk_description}}",
+    interpretation: " {% for exp in chads2_score.explanation %}{{exp}} * {% endfor %} ",
+    badge: { text: "{{chads2_score.risk_category}}", color: "bg-red-100 text-red-700" },
+    recommendations: [
+      {% for rm in chads2_score.recommendations %}{ icon: "fa-heart", text: "{{rm}}"},{% endfor %}
+    ]
+  },
+  cha2ds2_vasc_score: {
+    value: {{cha2ds2_vasc_score.risk_percentage}},
+    description: "{{cha2ds2_vasc_score.risk_description}}",
+    interpretation: " {% for exp in cha2ds2_vasc_score.explanation %}{{exp}} * {% endfor %} ",
+    badge: { text: "{{cha2ds2_vasc_score.risk_category}}", color: "bg-red-100 text-red-700" },
+    recommendations: [
+      {% for rm in cha2ds2_vasc_score.recommendations %}{ icon: "fa-heart", text: "{{rm}}"},{% endfor %}
+    ]
+  },
+  has_bled_score: {
+    value: {{has_bled_score.risk_percentage}},
+    description: "{{has_bled_score.risk_description}}",
+    interpretation: " {% for exp in has_bled_score.explanation %}{{exp}} * {% endfor %} ",
+    badge: { text: "{{has_bled_score.risk_category}}", color: "bg-red-100 text-red-700" },
+    recommendations: [
+      {% for rm in has_bled_score.recommendations %}{ icon: "fa-heart", text: "{{rm}}"},{% endfor %}
+    ]
+  }
+};
+
+/* ---------- 2) Clinical max scales per score (controls the arc length) ---------- */
+const SCALE_MAX = {
+  framingham_score: 35,      // your fuzzy output universe tops ~35%
+  ascvd_score: 40,           // pooled cohort style often 0–40%
+  qrisk3_score: 40,          // 0–40%+
+  chads2_score: 20,          // CHADS2 annual tops ~18%
+  cha2ds2_vasc_score: 15,    // CHA2DS2-VASc annual ~0–12%
+  has_bled_score: 15         // HAS-BLED annual ~0–12.5%
+};
+
+/* ---------- 3) Color logic by category (fallback to ratio if needed) ---------- */
+function colorByCategory(text) {
+  const t = (text || '').toLowerCase();
+  if (t.includes('very low') || t.includes('low'))   return {hex:'#10b981', cls:'bg-green-100 text-green-800'}; // green
+  if (t.includes('borderline') || t.includes('moderate') || t.includes('intermediate'))
+                                                      return {hex:'#f59e0b', cls:'bg-yellow-100 text-yellow-800'}; // amber
+  if (t.includes('high') && !t.includes('very'))      return {hex:'#f97316', cls:'bg-orange-100 text-orange-800'}; // orange
+  return {hex:'#ef4444', cls:'bg-red-100 text-red-700'}; // very high / high default red
+}
+
+function colorByRatio(r) { // 0..1
+  if (r < 0.25) return '#10b981';
+  if (r < 0.5)  return '#f59e0b';
+  if (r < 0.75) return '#f97316';
+  return '#ef4444';
+}
+
+/* ---------- 4) Optional: make it a semicircular gauge for better perception ---------- */
+const USE_GAUGE = true;           // set false to keep full donut
+const GAUGE_CIRCUMFERENCE = 220;  // degrees of arc
+const GAUGE_ROTATION = -110;      // centered gauge
+
+let chartInstance = null;
+
+function renderScore(scoreKey) {
+  const score = scoresData[scoreKey];
+  if (!score) return;
+
+  // True value (as produced by your model)
+  const truePct = Number(score.value || 0);
+
+  // Scale-aware display so “length” is fair across scores
+  const scaleMax = SCALE_MAX[scoreKey] ?? 100;
+  const ratio = Math.max(0, Math.min(1, truePct / scaleMax));
+  const displayPct = Math.round(ratio * 100);
+
+  // Colors: prefer category mapping; fall back to ratio if no badge text
+  const catColor = colorByCategory(score.badge?.text);
+  const mainColor = (score.badge?.text ? catColor.hex : colorByRatio(ratio));
+  const badgeClass = (score.badge?.text ? catColor.cls : 'bg-gray-100 text-gray-700');
+
+  // Update header numbers / texts
+  document.getElementById('scorePercent').textContent = `${truePct.toFixed(1)}%`;
+  document.getElementById('descriptionText').textContent = score.description;
+  document.getElementById('interpretationText').textContent = score.interpretation;
+
+  // Update badge
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = score.badge?.text || '—';
+  badge.className = `mt-2 inline-block px-3 py-1 rounded-full text-sm font-medium ${badgeClass}`;
+
+  // (Re)draw chart
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('riskChart').getContext('2d');
+
+  // nice subtle track
+  const trackColor = '#e5e7eb';
+
+  chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [displayPct, 100 - displayPct],
+        backgroundColor: [mainColor, trackColor],
+        borderWidth: 0,
+        cutout: '72%'
+      }]
+    },
+    options: {
+      rotation: USE_GAUGE ? GAUGE_ROTATION : -90,
+      circumference: USE_GAUGE ? GAUGE_CIRCUMFERENCE : 360,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { enabled: false },
+        legend: { display: false },
+        // Center label plugin: shows scaled vs true
+        title: { display: false }
+      }
+    },
+    plugins: [{
+      // draw value & scale in the center
+      id: 'centerText',
+      afterDraw(chart) {
+        const {ctx, chartArea:{width, height}} = chart;
+        ctx.save();
+        ctx.font = '600 16px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#111827';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${truePct.toFixed(1)}%`, chart.getDatasetMeta(0).data[0].x, chart.getDatasetMeta(0).data[0].y);
+        ctx.font = '500 11px Inter, system-ui, sans-serif';
+        ctx.fillStyle = '#6b7280';
+        ctx.fillText(`of ${scaleMax}% scale`, chart.getDatasetMeta(0).data[0].x, chart.getDatasetMeta(0).data[0].y + 16);
+        ctx.restore();
+      }
+    }]
+  });
+
+  // Recommendations
+  const recContainer = document.getElementById('recommendations');
+  recContainer.innerHTML = '';
+  score.recommendations.forEach(rec => {
+    recContainer.innerHTML += `
+      <div class="flex items-start bg-gray-50 p-3 rounded-lg shadow-sm">
+        <i class="fas ${rec.icon} text-blue-500 mt-1 mr-3"></i>
+        <p>${rec.text}</p>
+      </div>
+    `;
+  });
+}
+
+/* ---------- 5) Init ---------- */
+document.getElementById('scoreSelector').addEventListener('change', (e) => {
+  renderScore(e.target.value);
+});
+window.addEventListener('DOMContentLoaded', () => {
+  renderScore('framingham_score'); // default
+});
+</script>
+
+
+
+
+{% endblock %}

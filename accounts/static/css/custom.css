@@ -1,0 +1,418 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8f9fa;
+  }
+  .header {
+    background: linear-gradient(135deg, #007bff, #00bcd4);
+    color: white;
+    padding: 100px 0;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 3rem;
+    font-weight: 600;
+  }
+  .header p {
+    font-size: 1.2rem;
+    margin-top: 20px;
+  }
+  .cta-buttons {
+    margin-top: 30px;
+  }
+  .cta-buttons .btn {
+    margin: 10px;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+  }
+  .features-carousel {
+    margin-top: 50px;
+    background-color: white;
+    padding: 50px 0;
+  }
+  .carousel-item {
+    text-align: center;
+    padding: 20px;
+  }
+  .carousel-item h3 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+  .carousel-item p {
+    font-size: 1.1rem;
+    color: #555;
+  }
+  .footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 20px 0;
+    margin-top: 50px;
+  }
+
+  /* Login Page */
+  /* Custom Styles for Login Page */
+.login-container {
+    background: linear-gradient(135deg, #007bff, #00bcd4);
+    padding: 20px;
+}
+
+.login-card {
+    max-width: 400px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.form-control-lg {
+    border-radius: 10px;
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control-lg:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+a {
+    color: #007bff;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #0056b3;
+}
+
+/* Custom Styles for Signup Page */
+.signup-container {
+    background: linear-gradient(135deg, #007bff, #00bcd4);
+    padding: 20px;
+}
+
+.signup-card {
+    max-width: 500px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 20px;
+}
+
+.signup-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Style all input tags within .signup-card */
+.signup-card input[type="text"],
+.signup-card input[type="email"],
+.signup-card input[type="password"],
+.signup-card input[type="date"],
+.signup-card select,
+.signup-card textarea {
+    width: 100%;
+    padding: 12px 20px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.signup-card input[type="text"]:focus,
+.signup-card input[type="email"]:focus,
+.signup-card input[type="password"]:focus,
+.signup-card input[type="date"]:focus,
+.signup-card select:focus,
+.signup-card textarea:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+/* Style select dropdown */
+.signup-card select {
+    appearance: none;
+    background-color: white;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 12px;
+}
+
+/* Style textarea */
+.signup-card textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Style buttons */
+.signup-card .btn-primary {
+    background-color: #007bff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.signup-card .btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.signup-card .btn-secondary {
+    background-color: #6c757d;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.signup-card .btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+/* Style labels */
+.signup-card label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* Style invalid feedback */
+.signup-card .invalid-feedback {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 5px;
+}
+
+/* Remove display: none; from .form-step */
+.form-step {
+    /* display: none; */ /* Remove this line */
+}
+
+.form-step.active {
+    display: block;
+}
+
+/* Hide Step 2 by default */
+#step2 {
+    display: none;
+}
+
+.form-control-lg {
+    border-radius: 10px;
+    padding: 12px 20px;
+    border: 1px solid #ddd;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control-lg:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 10px rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+
+/* CVD SECTION  */
+.cvd-section {
+    padding: 80px 0;
+    background-color: #f8f9fa;
+}
+
+.cvd-section h2 {
+    color: #007bff;
+    margin-bottom: 20px;
+}
+
+.cvd-section p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #555;
+}
+
+.cvd-section img {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* LLM SECTION  */
+
+.llm-section {
+    padding: 80px 0;
+    background-color: #ffffff;
+}
+
+.llm-section h2 {
+    color: #28a745;
+    margin-bottom: 20px;
+}
+
+.llm-section p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #555;
+}
+
+.llm-section img {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Multi AGent Section  */
+
+.multi-agent-section {
+    padding: 80px 0;
+    background-color: #f8f9fa;
+}
+
+.multi-agent-section h2 {
+    color: #dc3545;
+    margin-bottom: 20px;
+}
+
+.multi-agent-section p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #555;
+}
+
+.multi-agent-section img {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+.carousel-control-next-icon{
+    background-color: #555;
+    border-radius: 50%;
+}
+.carousel-control-prev-icon{
+    background-color: #555;
+    border-radius: 50%;
+}
+
+
+/* CSS */
+.go-back-btn {
+  /* Positioning */
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999; /* Ensures button stays above other elements */
+  
+  /* Layout and sizing */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 16px;
+  
+  /* Styling */
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  
+  /* Font and text */
+  font-family: 'Arial', sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  /* Transition for smooth hover effects */
+  transition: all 0.3s ease;
+}
+
+/* SVG icon styling */
+.go-back-icon {
+  width: 20px;
+  height: 20px;
+  stroke: white;
+}
+
+/* Hover effects */
+.go-back-btn:hover {
+  background: linear-gradient(135deg, #45a049, #4CAF50);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Active state (when clicked) */
+.go-back-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .go-back-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    bottom: 15px;
+    right: 15px;
+  }
+  
+  .go-back-icon {
+    width: 18px;
+    height: 18px;
+  }
+}

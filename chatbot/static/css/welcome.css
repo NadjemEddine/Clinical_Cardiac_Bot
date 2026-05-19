@@ -1,0 +1,111 @@
+/* Custom Styles */
+.chat-log {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Default styling for divs in chat-log (fallback) */
+.chat-log div {
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+/* Styling for the agent's message */
+.chat-agent {
+    background-color: #e6f3ff;
+    color: #1a1a1a;
+    padding: 12px 16px;
+    margin: 8px 10px;
+    border-radius: 12px;
+    max-width: 70%;
+    align-self: flex-start;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+
+.chat-user {
+    background-color: #1050ce;
+    color: #ffffff;
+    padding: 12px 16px;
+    margin: 8px 10px;
+    border-radius: 12px;
+    max-width: 70%;
+    align-self: flex-end;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Style the robot icon */
+.chat-agent i {
+    margin-right: 8px;
+    font-size: 16px;
+    vertical-align: middle;
+}
+.chat-user i {
+    margin-right: 8px;
+    font-size: 16px;
+    vertical-align: middle;
+    color:#ffffff ;
+}
+
+/* Remove nth-child to avoid conflicts */
+.chat-log div:nth-child(odd),
+.chat-log div:nth-child(even) {
+   
+}
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Other styles */
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0;
+}
+
+.input-group {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    border-color: #007bff;
+}

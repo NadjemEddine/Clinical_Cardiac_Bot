@@ -1,0 +1,202 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+
+
+{% block title %}Welcome, {{ request.user.username }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Welcome Message -->
+            <div class="text-center mb-4">
+                <h1 class="display-4">Welcome, {{ request.user.username }}!</h1>
+                <p class="lead">Let's take your Electrical clinical data for today . Please answer our questions carefully</p>
+            </div>
+
+            <!-- Chat Interface -->
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Medical Assistant</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Chat Log -->
+                    <div id="chat-log" class="chat-log mb-3">
+                        <!-- Messages will be dynamically added here -->
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="input-group">
+                        <input type="text" id="message-input" class="form-control" placeholder="Type your response..." aria-label="Type your response">
+                        <div class="input-group-append">
+                            <button id="send-button" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Echo Modal -->
+<div class="modal fade" id="echoModal" tabindex="-1" aria-labelledby="echoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content shadow-lg rounded-4">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">Upload Echo Imaging</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="echoForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">File</label>
+            <input type="file" class="form-control" name="file" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">File Type</label>
+            <select class="form-select" name="file_type" required>
+              <option value="MP4">Video (.mp4)</option>
+              <option value="DICOM">DICOM (.dcm)</option>
+              <option value="PDF">Report (.pdf)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">View Type</label>
+            <select class="form-select" name="view_type">
+              <option value="PLAX">Parasternal Long Axis</option>
+              <option value="A4C">Apical 4 Chamber</option>
+              <option value="PSAX">Parasternal Short Axis</option>
+              <option value="SUBC">Subcostal</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Ejection Fraction (%)</label>
+            <input type="number" step="0.1" class="form-control" name="ejection_fraction">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MRI Modal -->
+<div class="modal fade" id="mriModal" tabindex="-1" aria-labelledby="mriModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content shadow-lg rounded-4">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Upload Cardiac MRI</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="mriForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">File</label>
+            <input type="file" class="form-control" name="file" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Sequence Type</label>
+            <select class="form-select" name="sequence_type">
+              <option value="LGE">Late Gadolinium Enhancement</option>
+              <option value="CINE">Cine MRI</option>
+              <option value="T1">T1 Mapping</option>
+              <option value="T2">T2 Mapping</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Slice Thickness (mm)</label>
+            <input type="number" step="0.1" class="form-control" name="slice_thickness">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">File Type</label>
+            <select class="form-select" name="file_type">
+              <option value="DICOM">DICOM (.dcm)</option>
+              <option value="PDF">Report (.pdf)</option>
+              <option value="MP4">Video (.mp4)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- CT Modal -->
+<div class="modal fade" id="ctModal" tabindex="-1" aria-labelledby="ctModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content shadow-lg rounded-4">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">Upload Cardiac CT</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="ctForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">File</label>
+            <input type="file" class="form-control" name="file" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Indication</label>
+            <select class="form-select" name="indication">
+              <option value="CALCIUM">Calcium Scoring</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">File Type</label>
+            <select class="form-select" name="file_type">
+              <option value="DICOM">DICOM (.dcm)</option>
+              <option value="PDF">Report (.pdf)</option>
+              <option value="MP4">Video (.mp4)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-warning">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- Include Font Awesome for Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<!-- Include Custom CSS -->
+<link rel="stylesheet" href="{% static 'css/daily_chat.css' %}" />
+
+
+<!-- JavaScript -->
+<script>
+    const patient_id = "{{ request.user.id }}";
+    const room_id = "{{ room_name }}";
+    const record = "{{ recordID }}";
+    const NullFields = "{{ NullFields }}";
+    
+</script>
+<script type="module" src="{% static 'js/hvr_chat.js' %}"></script>
+<style src="{% static 'css/daily_chat.css' %}"></style>
+{% endblock content %}

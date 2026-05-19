@@ -1,0 +1,170 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}
+Patient : 
+{% endblock title %}
+{% block header %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<style>
+    .records-container {
+        padding: 20px;
+        margin-top: 20px;
+    }
+    .table-header {
+        margin-bottom: 20px;
+    }
+    .table-container {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 20px;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #007bff;
+        color: white !important;
+        border-color: #007bff;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .parameter-heading {
+        color: #007bff;
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .no-records {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4 text-center">Patient: {{ patient.username }}</h2>
+
+    <!-- Static Clinical Data -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Static Clinical Data</h5>
+        </div>
+        <div class="card-body">
+            {% if static_data %}
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Diabetes:</strong> {{ static_data.diabetes }}</li>
+                    <li class="list-group-item"><strong>Hypertension:</strong> {{ static_data.hypertension }}</li>
+                    <li class="list-group-item"><strong>Smoke:</strong> {{ static_data.smoke }}</li>
+                    <li class="list-group-item"><strong>Kidney Disease:</strong> {{ static_data.kidney_disease }}</li>
+                    <li class="list-group-item"><strong>Hypertension Medications:</strong> {{ static_data.hypertension_medicales }}</li>
+                    <li class="list-group-item"><strong>Physical Activity:</strong> {{ static_data.physical_activity }}</li>
+                    <li class="list-group-item"><strong>Asthma:</strong> {{ static_data.astheme }}</li>
+                    <li class="list-group-item"><strong>Pulmonary Disease:</strong> {{ static_data.pulmonary_disease }}</li>
+                    <li class="list-group-item"><strong>Alcoholic:</strong> {{ static_data.alcoholic }}</li>
+                    <li class="list-group-item"><strong>Walking Problem:</strong> {{ static_data.walking_problem }}</li>
+                    <li class="list-group-item"><strong>E-Cigarette Use:</strong> {{ static_data.e_cigarette }}</li>
+                    <li class="list-group-item"><strong>COVID-19:</strong> {{ static_data.covid_19 }}</li>
+                    <li class="list-group-item"><strong>Previous Stroke:</strong> {{ static_data.prevouis_stroke }}</li>
+                    <li class="list-group-item"><strong>Recorded At:</strong> {{ static_data.created_at|date:"Y-m-d H:i" }}</li>
+                </ul>
+            {% else %}
+                <p class="text-muted">No static clinical data recorded for this patient.</p>
+            {% endif %}
+        </div>
+    </div>
+{% if not daily_records %}
+<div id="notification" class="notification">
+  <span
+    >this patient did not his records yet 😷. </span
+  >
+  
+
+</div>
+{% endif%}
+    <div class="container records-container">
+    <div class="table-header">
+        <h1 class="parameter-heading">Health Records History</h1>
+        <p>View and analyze your historical health data records</p>
+    </div>
+
+    <div class="table-container">
+        {% if daily_records %}
+        <div class="table-responsive">
+            <table id="recordsTable" class="display responsive nowrap" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Weight (kg)</th>
+                        <th>Height (cm)</th>
+                        <th>Cholesterol</th>
+                        <th>Fasting</th>
+                        <th>Chest Pain</th>
+                        <th>Glucose (mg/dL)</th>
+                        <th>Systolic BP</th>
+                        <th>Diastolic BP</th>
+                        <th>Removed Teeth</th>
+                        <th>Clinical Report</th>
+                        <th>ECG</th>
+                        <th>ECHO</th>
+                        <th>MRI</th>
+                        <th>CT Cardiac</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in daily_records %}
+                    <tr>
+                        <td data-sort="{{ record.created_at|date:'Y-m-d' }}">{{ record.created_at|date:"M d, Y" }}</td>
+                        <td>{{ record.weight|default:"-" }}</td>
+                        <td>{{ record.height|default:"-" }}</td>
+                        <td>{{ record.cholestrol_total|default:"-" }}</td>
+                        <td>{% if record.fasting %}Yes{% else %}No{% endif %}</td>
+                        <td>{% if record.chest_pain %}Yes{% else %}No{% endif %}</td>
+                        <td>{{ record.glucose_level|default:"-" }}</td>
+                        <td>{{ record.systolic_bp|default:"-" }}</td>
+                        <td>{{ record.diastolic_bp|default:"-" }}</td>
+                        <td>{{ record.removed_teeth|default:"0" }}</td>
+                        <td>
+                            <a href="{% url "medical_scores" record.id %}" class="btn btn-sm btn-info"><i class="fa-solid fa-notes-medical"></i></a>
+                        </td>
+                        <td>
+                            <a href="{% url "ecg_reporting" record.id %}" class="btn btn-sm btn-info"><i class="fa-solid fa-heart-pulse"></i></a>
+                        </td>
+                        <td>
+                            <a href="patient_{{patient.id}}/ichoimaging/{{record.created_at__date__}}" class="btn btn-sm btn-info">ECHO</a>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-info">MRI</a>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-info">CT</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="no-records">
+            <p>No health records found. Start tracking patient health parameters to see your history here.</p>
+            
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script type="module" src="{% static 'js/records_history.js' %}"></script>
+
+</div>
+
+{% endblock content %}

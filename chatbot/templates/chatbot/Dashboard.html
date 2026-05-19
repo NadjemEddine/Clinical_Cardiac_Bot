@@ -1,0 +1,172 @@
+{% extends 'accounts/base.html' %} 
+{% load static %} 
+{% block title %} Dashboard
+{% endblock %} 
+
+{% block header %}
+<link href="{% static 'css/dashboard.css' %}" rel="stylesheet" />
+{% endblock header %}
+
+{% block content %}
+
+
+
+
+{% if not record %}
+<div id="notification" class="notification">
+  <span
+    >You did not record your clinical information today 😷. You can take it
+    now?</span
+  >
+  <button
+    onclick="document.location='/chatbot/HVRChat'"
+    id="startRecordBtn"
+    class="btn-primary"
+  >
+    Start Daily Record
+  </button>
+  <button
+    onclick="document.location='/chatbot/history'"
+    id="historyBtn"
+    class="btn-secondary"
+  >
+    Check History
+  </button>
+</div>
+
+{% else %}
+<div id="notification" class="notification">
+  <span
+    >You did all record your clinical information today 😷. You can check here</span
+  >
+  
+  <button
+    onclick="document.location='/chatbot/history'"
+    id="historyBtn"
+    class="btn-primary"
+  >
+    Check History
+  </button>
+</div>
+
+{% endif %}
+
+
+
+<div class="container-fluid">
+  <!-- Animated Clinical Data Dashboard -->
+  <div class="clinical-dashboard mb-5">
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="filter-controls">
+          <input
+            type="text"
+            class="form-control search-filter"
+            placeholder="Search conditions..."
+          />
+          <div class="btn-group toggle-filters">
+            <button class="btn btn-outline-primary active" data-filter="all">
+              All
+            </button>
+            <button class="btn btn-outline-primary" data-filter="yes">
+              Positive
+            </button>
+            <button class="btn btn-outline-primary" data-filter="no">
+              Negative
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row gy-4">
+      {% for key, value in static_data.items %}
+      <div class="col-xl-3 col-lg-4 col-md-6">
+        <div
+          class="condition-card {% if value %}positive{% else %}negative{% endif %}"
+          data-condition="{{ key }}"
+        >
+          <div class="card-icon-wrapper">
+            <i
+              class="{% if key == 'diabetes' %}fas fa-heartbeat {% elif key == 'hypertension' %}fas fa-tint {% elif key == 'smoke' %}fas fa-smoking {% elif key == 'kidney_disease' %}fas fas-kidneys {% elif key == 'hypertension_medicales' %}fas fa-file-medical {% elif key == 'physical_activity' %}fas fa-running {% elif key == 'astheme' %}fas fa-lungs {% elif key == 'pulmonary_disease' %}fas fa-lungs {% elif key == 'alcoholic' %}fas fa-wine-bottle {% elif key == 'walking_problem' %}fas fa-wheelchair {% elif key == 'e_cigarette' %}fas fa-smoking {% elif key == 'covid_19' %}fas fa-virus {% elif key == 'prevouis_stroke' %}fas fa-brain{% endif %}"
+            ></i>
+            <div class="status-indicator"></div>
+          </div>
+          <div class="card-content">
+            <h3 class="condition-title">
+              {% if key == 'covid_19' %}COVID-19 {% elif key == 'e_cigarette' %} E-Cigarette {% else %} {{ key|title|cut:"_" }}{% endif %}
+            </h3>
+            <div class="condition-status">
+              {% if value %}Yes{% else %}No{% endif %}
+            </div>
+          </div>
+          <div class="card-wave"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Keep the same CSS and JavaScript as previous version -->
+
+ 
+
+  <!-- Charts Section -->
+  <!-- Combined Clinical Data Chart -->
+  <div class="row">
+    <div class="col-12 mb-4">
+      <div class="chart-container">
+        <h5>Clinical Data Overview (Last 30 Days)</h5>
+        <canvas id="clinicalChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Filter functionality
+    document
+      .querySelector(".search-filter")
+      .addEventListener("input", function (e) {
+        const searchTerm = e.target.value.toLowerCase();
+        document.querySelectorAll(".condition-card").forEach((card) => {
+          const condition = card.dataset.condition;
+          card.style.display = condition.includes(searchTerm)
+            ? "block"
+            : "none";
+        });
+      });
+
+    // Toggle filters
+    document.querySelectorAll(".toggle-filters button").forEach((btn) => {
+      btn.addEventListener("click", function () {
+        document
+          .querySelectorAll(".toggle-filters button")
+          .forEach((b) => b.classList.remove("active"));
+        this.classList.add("active");
+        const filter = this.dataset.filter;
+
+        document.querySelectorAll(".condition-card").forEach((card) => {
+          const status = card.classList.contains("positive") ? "yes" : "no";
+          card.style.display =
+            filter === "all" || filter === status ? "block" : "none";
+        });
+      });
+    });
+
+    // Add click animation
+    document.querySelectorAll(".condition-card").forEach((card) => {
+      card.addEventListener("click", function () {
+        this.style.transform = "scale(0.95)";
+        setTimeout(() => (this.style.transform = ""), 200);
+      });
+    });
+  });
+</script>
+
+<script type="module" src="{% static 'js/dashboard.js' %}"></script>
+
+
+{% endblock content %}

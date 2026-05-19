@@ -1,0 +1,147 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+
+{% block title %}Records History{% endblock %}
+
+{% block header %}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<style>
+    .records-container {
+        padding: 20px;
+        margin-top: 20px;
+    }
+    .table-header {
+        margin-bottom: 20px;
+    }
+    .table-container {
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 20px;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #007bff;
+        color: white !important;
+        border-color: #007bff;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .parameter-heading {
+        color: #007bff;
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .no-records {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not record %}
+<div id="notification" class="notification">
+  <span
+    >You did not record your clinical information today 😷. You can take it
+    now?</span
+  >
+  <button
+    onclick="document.location='/chatbot/HVRChat'"
+    id="startRecordBtn"
+    class="btn-primary"
+  >
+    Start Daily Record
+  </button>
+
+</div>
+{% endif%}
+
+
+<div class="container records-container">
+    <div class="table-header">
+        <h1 class="parameter-heading">Health Records History</h1>
+        <p>View and analyze your historical health data records</p>
+    </div>
+
+    <div class="table-container">
+        {% if clinical_records %}
+        <div class="table-responsive">
+            <table id="recordsTable" class="display responsive nowrap" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Weight (kg)</th>
+                        <th>Height (cm)</th>
+                        <th>Cholesterol</th>
+                        <th>Fasting</th>
+                        <th>Chest Pain</th>
+                        <th>Glucose (mg/dL)</th>
+                        <th>Systolic BP</th>
+                        <th>Diastolic BP</th>
+                        <th>Removed Teeth</th>
+                        <th>Clinical Report</th>
+                        <th>ECG</th>
+                        <th>ECHO</th>
+                        <th>MRI</th>
+                        <th>CT Cardiac</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in clinical_records %}
+                    <tr>
+                        <td data-sort="{{ record.created_at|date:'Y-m-d' }}">{{ record.created_at|date:"M d, Y" }}</td>
+                        <td>{{ record.weight|default:"-" }}</td>
+                        <td>{{ record.height|default:"-" }}</td>
+                        <td>{{ record.cholestrol_total|default:"-" }}</td>
+                        <td>{% if record.fasting %}Yes{% else %}No{% endif %}</td>
+                        <td>{% if record.chest_pain %}Yes{% else %}No{% endif %}</td>
+                        <td>{{ record.glucose_level|default:"-" }}</td>
+                        <td>{{ record.systolic_bp|default:"-" }}</td>
+                        <td>{{ record.diastolic_bp|default:"-" }}</td>
+                        <td>{{ record.removed_teeth|default:"0" }}</td>
+                        <td>
+                            <a href="{% url "medical_scores" record.id %}" class="btn btn-sm btn-info"><i class="fa-solid fa-notes-medical"></i></a>
+                        </td>
+                        <td>
+                            <a href="{% url "ecg_reporting" record.id %}" class="btn btn-sm btn-info"><i class="fa-solid fa-heart-pulse"></i></a>
+                        </td>
+                        <td>
+                            <a href="patient_{{patient.id}}/ichoimaging/{{record.created_at__date__}}" class="btn btn-sm btn-info">ECHO</a>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-info">MRI</a>
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-info">CT</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="no-records">
+            <p>No health records found. Start tracking your health parameters to see your history here.</p>
+            <a href="{% url 'HVRchat' %}" class="btn btn-primary">Record New Data</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script type="module" src="{% static 'js/records_history.js' %}"></script>
+{% endblock %}
+
+
