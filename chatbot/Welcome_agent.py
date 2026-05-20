@@ -1,9 +1,8 @@
 import os
 from langchain_core.prompts import ChatPromptTemplate
 
-from langchain_google_genai import ChatGoogleGenerativeAI
 from IPython.display import Image, display
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 from langchain_core.runnables import Runnable, RunnableConfig
 
@@ -11,14 +10,12 @@ from langchain_core.runnables import Runnable, RunnableConfig
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph.message import AnyMessage, add_messages
-from langchain.messages import HumanMessage, AIMessage
-from langchain_openai import ChatOpenAI
+from langchain.messages import HumanMessage
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph, START
 from langgraph.prebuilt.tool_node import tools_condition
 from langchain_deepseek import ChatDeepSeek
-from langchain_ollama import ChatOllama
 
 
 from .Welcome_agent_tools import Check_static_clinical_data, Update_static_clinical_data

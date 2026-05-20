@@ -342,7 +342,6 @@ def generate_ecg_figure(raw_ecg, sampling_rate, patient_id, record_date):
 
     # NeuroKit processing
     signals, info = nk.ecg_process(raw_ecg, sampling_rate=sampling_rate)
-    nk.ecg_plot(signals, info)
 
     # Grab the current figure
     fig = plt.gcf()

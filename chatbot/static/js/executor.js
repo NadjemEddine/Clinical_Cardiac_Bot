@@ -1,4 +1,6 @@
 
+import { ecgSampleData } from './ecg_simulation_data.js';
+
 // executor.js
 let bluetoothDevice = null;
 let ecgData = [];
@@ -47,12 +49,10 @@ async function executeTool(chatSocket, data, record) {
 
     if (functionName === 'checkBluetoothConnection') {
         try {
-            console.log(`Checking Bluetooth connection...`);
+            console.log(`Checking Bluetooth connection (Simulation)...`);
 
-            // Check 1: Is Bluetooth API available?
-            const isBluetoothAvailable = await navigator.bluetooth.getAvailability();
-            if (!isBluetoothAvailable) {
-                console.error('Bluetooth is not available on this device/browser.');
+            if (!bluetoothDevice) {
+                console.log('No simulation device paired yet');
                 chatSocket.send(JSON.stringify({
                     type: 'js_function_response',
                     message: 'Not connected',
@@ -62,49 +62,7 @@ async function executeTool(chatSocket, data, record) {
                 return;
             }
 
-            // Check 2: Do we have a device reference?
-            if (!bluetoothDevice) {
-                console.log('No device paired yet');
-                // chatSocket.send(JSON.stringify({
-                //     type: 'js_function_response',
-                //     message: 'Not connected',
-                //     patient_id: patientId,
-                //     sender: "executor",
-                // }));
-                return;
-            }
-
-            // Check 3: Is the device still connected via GATT?
-            if (!gattServer || !gattServer.connected) {
-                console.log('Device was paired but GATT is disconnected');
-
-                // Try to reconnect automatically (no user gesture needed)
-                try {
-                    console.log('Attempting automatic reconnection...');
-                    gattServer = await bluetoothDevice.gatt.connect();
-                    console.log('Reconnected successfully');
-
-                    chatSocket.send(JSON.stringify({
-                        type: 'js_function_response',
-                        message: 'Connected',
-                        patient_id: patientId,
-                        sender: "executor",
-                    }));
-                    return;
-                } catch (reconnectError) {
-                    console.log('Auto-reconnect failed:', reconnectError.message);
-                    chatSocket.send(JSON.stringify({
-                        type: 'js_function_response',
-                        message: 'Not connected',
-                        patient_id: patientId,
-                        sender: "executor",
-                    }));
-                    return;
-                }
-            }
-
-            // All checks passed - device is actually connected
-            console.log('Device is connected:', bluetoothDevice.name);
+            console.log('Simulation device is connected:', bluetoothDevice.name);
             chatSocket.send(JSON.stringify({
                 type: 'js_function_response',
                 message: 'Connected',
@@ -124,9 +82,8 @@ async function executeTool(chatSocket, data, record) {
 
     } else if (functionName === 'pairBluetoothDevice') {
         try {
-            // Check if already connected
-            if (bluetoothDevice && gattServer && gattServer.connected) {
-                console.log('Device already connected:', bluetoothDevice.name);
+            if (bluetoothDevice) {
+                console.log('Simulation device already connected');
                 chatSocket.send(JSON.stringify({
                     type: 'js_function_response',
                     message: 'Paired and connected',
@@ -136,46 +93,17 @@ async function executeTool(chatSocket, data, record) {
                 return;
             }
 
-            // Try to reconnect to existing device first (no user gesture needed)
-            if (bluetoothDevice && bluetoothDevice.gatt) {
-                try {
-                    console.log('Attempting to reconnect to existing device...');
-                    gattServer = await bluetoothDevice.gatt.connect();
-                    console.log('Reconnected successfully');
-
-                    chatSocket.send(JSON.stringify({
-                        type: 'js_function_response',
-                        message: 'Paired and connected',
-                        patient_id: patientId,
-                        sender: "executor",
-                    }));
-                    return;
-                } catch (reconnectError) {
-                    console.log('Reconnection failed, need new pairing:', reconnectError.message);
-                    bluetoothDevice = null;
-                    gattServer = null;
-                }
-            }
-
-            // CRITICAL: Can't call requestDevice() from WebSocket
-            // Store the request and show UI button
-            console.log('Pairing requires user gesture - showing button');
-
-            pendingPairingRequest = {
-                chatSocket: chatSocket,
-                patientId: patientId,
-                data: data
-            };
-
-            // Show the pairing button to user
-            showPairingButton();
-
-            // Send immediate response (agent expects a response)
+            console.log('Bypassing UI - Auto Pairing Virtual Device');
+            
+            // Auto pair a virtual device immediately
+            bluetoothDevice = { name: 'Virtual_ECG_Device' };
+            
             chatSocket.send(JSON.stringify({
                 type: 'js_function_response',
-                message: 'Waiting for user to approve pairing',
+                message: 'Device paired successfully', // Matches what the agent expects when successful
                 patient_id: patientId,
                 sender: "executor",
+                pairing_completed: true
             }));
 
         } catch (error) {
@@ -189,80 +117,10 @@ async function executeTool(chatSocket, data, record) {
         }
     }
     else if (functionName === 'startECGRecording') {
-        // try {
-        //     const duration = data.args[0] * 1000 || 10000; // Hardcoded 10s for now (adjust as needed)
-        //     record = data.recordID
-        //     if (!bluetoothDevice || !bluetoothDevice.gatt.connected) {
-        //         chatSocket.send(JSON.stringify({
-        //             type: 'js_function_response',
-        //             message: 'Bluetooth device not connected',
-        //             patient_id: patientId,
-        //             sender: "executor",
-        //         }));
-        //         return;
-        //     }
-
-        //     const server = bluetoothDevice.gatt;
-        //     const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
-        //     const characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
-
-        //     ecgData = [];
-        //     console.log('Starting ECG recording for 10 seconds...');
-        //     const recordingAlert = showCustomAlert(
-        //         'Recording in progress, please keep electrodes attached.',
-        //         'http://127.0.0.1:8000/static/js/Animation-heart-ecg.json' // Heartbeat animation
-        //     );
-
-        //     characteristic.addEventListener('characteristicvaluechanged', (event) => {
-        //         const value = new TextDecoder().decode(event.target.value);
-        //         const [ecgValue, electrodesConnected] = value.split(',');
-        //         const dataPoint = {
-        //             timestamp: Date.now(),
-        //             value: parseInt(ecgValue),
-        //             electrodesConnected: electrodesConnected === '1'
-        //         };
-        //         ecgData.push(dataPoint);
-        //         console.log(`ECG: ${dataPoint.value}, Electrodes: ${dataPoint.electrodesConnected ? 'Yes' : 'No'}`);
-        //     });
-
-        //     await characteristic.startNotifications();
-        //     console.log('Notifications started.');
-
-        //     await new Promise(resolve => setTimeout(resolve, duration));
-        //     await characteristic.stopNotifications();
-        //     console.log('Recording stopped. Total data points:', ecgData.length);
-        //     recordingAlert.remove(); // Remove "in progress" alert
-        //     showCustomAlert(
-        //         'Recording complete, you may remove electrodes.',
-        //         'http://127.0.0.1:8000/static/js/Animation-done.json', // Checkmark animation
-        //         3000 // Auto-remove after 3 seconds
-        //     );
-
-
-        //     postECGRecord(ecgData);
-        //     console.log('Recording details', ecgData);
-
-
-        //     chatSocket.send(JSON.stringify({
-        //         type: 'js_function_response',
-        //         message: 'Recording completed',
-        //         patient_id: patientId,
-        //         sender: "executor",
-        //     }));
-        // } catch (error) {
-        //     console.error('Error recording ECG:', error);
-        //     alert('Recording failed due to an error.');
-        //     chatSocket.send(JSON.stringify({
-        //         type: 'js_function_response',
-        //         message: `Error: ${error.message}`,
-        //         patient_id: patientId,
-        //         sender: "executor",
-        //     }));
-        // }
         try {
             const duration = data.args[0] * 1000 || 10000;
 
-            if (!bluetoothDevice || !bluetoothDevice.gatt.connected) {
+            if (!bluetoothDevice) {
                 chatSocket.send(JSON.stringify({
                     type: 'js_function_response',
                     message: 'Bluetooth device not connected',
@@ -272,10 +130,6 @@ async function executeTool(chatSocket, data, record) {
                 return;
             }
 
-            const server = bluetoothDevice.gatt;
-            const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
-            const characteristic = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
-
             // Reset global state
             ecgData = [];
             totalSamples = 0;
@@ -283,19 +137,27 @@ async function executeTool(chatSocket, data, record) {
             lastElectrodeStatus = true;
 
             let isRecording = true;
-            let hasSentDetachMessage = false;  // ← THIS IS KEY: send detach message ONLY ONCE
+            let hasSentDetachMessage = false;
 
             const recordingAlert = showCustomAlert(
-                'Recording in progress...<br><strong>Keep electrodes attached!</strong>',
+                'Recording in progress...<br><strong>Keep electrodes attached!</strong><br><br>'+
+                '<div><button id="simDisconnectBtn" style="margin-right:10px; padding: 5px; background: red; color: white; border: none; border-radius: 5px; cursor: pointer;">Simulate Disconnect</button>'+
+                '<button id="simElectrodeBtn" style="padding: 5px; background: orange; color: white; border: none; border-radius: 5px; cursor: pointer;">Simulate Electrode Off</button></div>',
                 'http://127.0.0.1:8000/static/js/Animation-heart-ecg.json'
             );
+
+            // Adding a small delay to attach listeners after DOM is updated by showCustomAlert
+            setTimeout(() => {
+                const discBtn = document.getElementById("simDisconnectBtn");
+                const elecBtn = document.getElementById("simElectrodeBtn");
+                if(discBtn) discBtn.onclick = () => { onDisconnected({target:{name:'Simulated Device'}}); };
+                if(elecBtn) elecBtn.onclick = () => { lastElectrodeStatus = false; };
+            }, 500);
 
             const stopRecording = async (reason = "completed") => {
                 if (!isRecording) return;
                 isRecording = false;
 
-                try { await characteristic.stopNotifications(); } catch (e) { }
-                characteristic.removeEventListener('characteristicvaluechanged', handleNotification);
                 recordingAlert.remove();
 
                 const actualDuration = Date.now() - startTime;
@@ -306,7 +168,7 @@ async function executeTool(chatSocket, data, record) {
                         'http://127.0.0.1:8000/static/js/Warning.json',
                         8000
                     );
-                } if (reason === "device disconnected") {
+                } else if (reason === "device disconnected") {
                     showCustomAlert(
                         'Device Disconnected!<br>Recording stopped.',
                         'http://127.0.0.1:8000/static/js/Warning.json',
@@ -334,19 +196,19 @@ async function executeTool(chatSocket, data, record) {
                     electrodesStable: lastElectrodeStatus,
                     samplingRateHz: totalSamples / (actualDuration / 1000) || 0,
                     ecgValues: ecgData,
-                    stoppedEarly: reason === "electrodes_lost"
+                    stoppedEarly: reason === "electrodes_lost" || reason === "device disconnected"
                 };
 
-                if (lastElectrodeStatus) {
-                    postECGRecord(payload);
+                if (lastElectrodeStatus && reason === "completed") {
+                     await postECGRecord(payload);
                 }
-                
 
                 chatSocket.send(JSON.stringify({
                     type: 'js_function_response',
-                    message: reason === "electrodes_lost" ? 'Recording aborted: Electrodes detached' : 'ECG recording completed',
+                    message: reason === "electrodes_lost" ? 'Recording aborted: Electrodes detached' : 
+                             reason === "device disconnected" ? 'FATAL ERROR: The device was powered off.' : 'ECG recording completed',
                     electrodesOK: lastElectrodeStatus,
-                    stoppedEarly: reason === "electrodes_lost",
+                    stoppedEarly: reason === "electrodes_lost" || reason === "device disconnected",
                     validSamples,
                     patient_id: patientId,
                     sender: "executor",
@@ -354,23 +216,17 @@ async function executeTool(chatSocket, data, record) {
             };
 
             const startTime = Date.now();
+            let sampleIndex = 0;
 
-            const handleNotification = (event) => {
-
+            const handleNotification = () => {
                 if (!isRecording) return;
-                if (BLE_MANAGER.isRecording === false) { console.error("Recording stopped by BLE_MANAGER"); return; }
-                
+                if (BLE_MANAGER.isRecording === false) { 
+                    console.error("Recording stopped by BLE_MANAGER"); 
+                    stopRecording("device disconnected");
+                    return; 
+                }
 
-                
-                const value = new TextDecoder().decode(event.target.value).trim();
-                const [ecgPart, flag] = value.split(';');
-                if (!ecgPart || flag === undefined) return;
-
-                const electrodeConnected = flag === '1';
-                lastElectrodeStatus = electrodeConnected;
-
-                // DETACH DETECTED → STOP EVERYTHING IMMEDIATELY
-                if (!electrodeConnected) {
+                if (!lastElectrodeStatus) {
                     if (!hasSentDetachMessage) {
                         hasSentDetachMessage = true;
                         chatSocket.send(JSON.stringify({
@@ -385,37 +241,27 @@ async function executeTool(chatSocket, data, record) {
                     return;
                 }
 
-                // Only process if electrodes OK
-                const samples = ecgPart.split(',').filter(s => s !== '');
-                for (const s of samples) {
+                // Append dummy data
+                for (let i = 0; i < 5; i++) {
                     totalSamples++;
-                    const mv = parseFloat(s);
-                    if (!isNaN(mv)) {
-                        ecgData.push(mv);
-                        validSamples++;
-                    }
+                    const mv = ecgSampleData[sampleIndex % ecgSampleData.length];
+                    sampleIndex++;
+                    ecgData.push(mv);
+                    validSamples++;
+                }
+                
+                if (Date.now() - startTime >= duration) {
+                    stopRecording("completed");
+                } else {
+                    setTimeout(handleNotification, 20); // 20ms = 50Hz updates of 5 samples each = 250Hz roughly
                 }
             };
 
-            // Start listening
-            characteristic.addEventListener('characteristicvaluechanged', handleNotification);
-            await characteristic.startNotifications();
-
-            // Wait for either: time up OR electrodes lost
-            const timeoutPromise = new Promise(resolve => setTimeout(() => resolve("timeout"), duration));
-            const manualStopPromise = new Promise(resolve => {
-                window.stopECGNow = () => resolve("manual");
-            });
-
-            const result = await Promise.race([timeoutPromise, manualStopPromise]);
-
-            if (isRecording) {
-                await stopRecording(result === "timeout" ? "completed" : "manual");
-            }
+            // Start simulation loop
+            setTimeout(handleNotification, 20);
 
         } catch (error) {
             console.error('ECG Recording Error:', error);
-            recordingAlert?.remove();
             showCustomAlert('Recording failed!', null, 5000);
             chatSocket.send(JSON.stringify({
                 type: 'js_function_response',
@@ -519,7 +365,7 @@ function showCustomAlert(message, animationUrl, duration = null) {
 
     // Add text
     const text = document.createElement('p');
-    text.textContent = message;
+    text.innerHTML = message;
     text.style.fontSize = '18px';
     text.style.fontFamily = 'Arial, sans-serif';
     text.style.marginTop = '10px';

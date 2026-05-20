@@ -1,7 +1,6 @@
 import os
 from langchain_core.prompts import ChatPromptTemplate
 
-from langchain_google_genai import ChatGoogleGenerativeAI
 from IPython.display import Image, display
 from pydantic import BaseModel, Field, validator
 from datetime import date, datetime

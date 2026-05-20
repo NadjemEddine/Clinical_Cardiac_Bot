@@ -1,4 +1,3 @@
-import asyncio
 import json
 import traceback
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -11,7 +10,6 @@ from .models import Conversation
 
 
 from typing import Dict
-from langchain_core.runnables import Runnable, RunnableConfig
 
 class ChatConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
