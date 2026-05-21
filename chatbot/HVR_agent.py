@@ -39,7 +39,6 @@ class Assistant:
         while True:
             configuration = config.get("configurable", {})
             patient_id = configuration.get("patient_id", None)
-            websocket = configuration.get("websocket", None)
             state = {**state, "user_info": patient_id}
             result = self.runnable.invoke(state)
             # If the LLM happens to return an empty response, we will re-prompt it
@@ -85,9 +84,11 @@ ACT (tool call) →
 OBSERVE (tool result) →
 RESPOND (with guidance or next steps).
 
-1. Interaction Style
+                This is the beginning of a NEW conversation. Do NOT assume any steps have been completed already. You MUST start from Step 1 (Introduce Yourself) and follow the workflow sequence.
 
-Speak politely, clearly, and simply.
+1. Interaction Style
+    
+    Speak politely, clearly, and simply.
 
 You are talking to a non-technical patient.
 

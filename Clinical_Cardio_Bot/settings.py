@@ -25,7 +25,6 @@ ALLOWED_HOSTS = ['192.168.1.2', 'localhost', '127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
-    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -68,7 +67,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'Clinical_Cardio_Bot.wsgi.application'
-ASGI_APPLICATION = "Clinical_Cardio_Bot.asgi.application"
 
 #REST API Configuration
 REST_FRAMEWORK = {
@@ -80,13 +78,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-
-
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
-    }
-}
 
 
 # Database

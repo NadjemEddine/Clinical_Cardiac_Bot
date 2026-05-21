@@ -193,10 +193,11 @@
 <script>
     const patient_id = "{{ request.user.id }}";
     const room_id = "{{ room_name }}";
-    const record = "{{ recordID }}";
+    const recordID = "{{ recordID }}";
     const NullFields = "{{ NullFields }}";
-    
 </script>
-<script type="module" src="{% static 'js/hvr_chat.js' %}"></script>
+<script src="{% static 'js/ecg_simulation_data.js' %}"></script>
+<script src="{% static 'js/executor.js' %}"></script>
+<script src="{% static 'js/hvr_chat.js' %}"></script>
 <style src="{% static 'css/daily_chat.css' %}"></style>
 {% endblock content %}

@@ -1,744 +1,286 @@
+// executor.js - Client-side tool executor for the HTTP agent flow
+// All functions return Promises with results for the agent.
 
-import { ecgSampleData } from './ecg_simulation_data.js';
-
-// executor.js
-let bluetoothDevice = null;
+let bluetoothDevice = { name: 'Virtual_ECG_Device' }; // pre-paired for simulation
 let ecgData = [];
 let totalSamples = 0;
 let validSamples = 0;
 let lastElectrodeStatus = null;
-let gattServer = null;          // <--- ADD THIS LINE
+let gattServer = null;
+let _recordingBreaker = null; // call this to stop recording
 
-// This object is visible to both onDisconnected AND executeTool
-const BLE_MANAGER = {
-    activeSocket: null,
-    isRecording: false,
-    patientId: null
-};
-
-// Queue for pairing requests from agent
-let pendingPairingRequest = null;
-
-async function executeTool(chatSocket, data, record) {
-    const functionName = data.function_name;
-    const patientId = patient_id;
-
-    // Save the reference so the global handler can find it
-    BLE_MANAGER.activeSocket = chatSocket;
-    BLE_MANAGER.patientId = patientId; // ensure this is defined
-    BLE_MANAGER.isRecording = true;
-
-    // This inner function can "see" chatSocket because of its scope
-    const handleBleFailure = (event) => {
-        console.log("The bridge caught the disconnect event!");
-        
-        if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: 'The device was powered off. Recording stopped.',
-                sender: 'executor'
-            }));
-        }
-        
-        // Stop listening after the error is handled
-        window.removeEventListener('ble_disconnected', handleBleFailure);
-    };
-
-    // Start listening for the "alarm" we named in Step 1
-    window.addEventListener('ble_disconnected', handleBleFailure);
-
-    if (functionName === 'checkBluetoothConnection') {
-        try {
-            console.log(`Checking Bluetooth connection (Simulation)...`);
-
-            if (!bluetoothDevice) {
-                console.log('No simulation device paired yet');
-                chatSocket.send(JSON.stringify({
-                    type: 'js_function_response',
-                    message: 'Not connected',
-                    patient_id: patientId,
-                    sender: "executor",
-                }));
-                return;
-            }
-
-            console.log('Simulation device is connected:', bluetoothDevice.name);
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: 'Connected',
-                patient_id: patientId,
-                sender: "executor",
-            }));
-
-        } catch (error) {
-            console.error('Error in checkBluetoothConnection:', error);
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: `Error: ${error.message}`,
-                patient_id: patientId,
-                sender: "executor",
-            }));
-        }
-
-    } else if (functionName === 'pairBluetoothDevice') {
-        try {
-            if (bluetoothDevice) {
-                console.log('Simulation device already connected');
-                chatSocket.send(JSON.stringify({
-                    type: 'js_function_response',
-                    message: 'Paired and connected',
-                    patient_id: patientId,
-                    sender: "executor",
-                }));
-                return;
-            }
-
-            console.log('Bypassing UI - Auto Pairing Virtual Device');
-            
-            // Auto pair a virtual device immediately
-            bluetoothDevice = { name: 'Virtual_ECG_Device' };
-            
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: 'Device paired successfully', // Matches what the agent expects when successful
-                patient_id: patientId,
-                sender: "executor",
-                pairing_completed: true
-            }));
-
-        } catch (error) {
-            console.error('Error in pairBluetoothDevice:', error);
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: `Error: ${error.message}`,
-                patient_id: patientId,
-                sender: "executor",
-            }));
-        }
+async function executeTool(functionName, args, record) {
+    console.log(`[EXECUTOR] Running: ${functionName}`);
+    switch (functionName) {
+        case 'checkBluetoothConnection':
+            return await checkBluetoothConnection();
+        case 'pairBluetoothDevice':
+            return await pairBluetoothDevice();
+        case 'startECGRecording':
+            return await startECGRecording(args, record);
+        case 'requestEchoImaging':
+            requestUpload('echoForm', '/chatbot/api/echo/upload/');
+            return null; // UI-only, no agent update
+        case 'requestCardiacMRI':
+            requestUpload('mriForm', '/chatbot/api/mri/upload/');
+            return null; // UI-only, no agent update
+        case 'requestCardiacCT':
+            requestUpload('ctForm', '/chatbot/api/ct/upload/');
+            return null; // UI-only, no agent update
+        default:
+            console.warn('Unknown tool function:', functionName);
+            return null;
     }
-    else if (functionName === 'startECGRecording') {
-        try {
-            const duration = data.args[0] * 1000 || 10000;
+}
 
-            if (!bluetoothDevice) {
-                chatSocket.send(JSON.stringify({
-                    type: 'js_function_response',
-                    message: 'Bluetooth device not connected',
-                    patient_id: patientId,
-                    sender: "executor",
-                }));
-                return;
-            }
+async function checkBluetoothConnection() {
+    console.log('[EXECUTOR] Bluetooth check → Connected (simulation)');
+    return 'Connected';
+}
 
-            // Reset global state
-            ecgData = [];
-            totalSamples = 0;
-            validSamples = 0;
-            lastElectrodeStatus = true;
+async function pairBluetoothDevice() {
+    bluetoothDevice = { name: 'Virtual_ECG_Device' };
+    console.log('[EXECUTOR] Pairing virtual device');
+    return 'Paired and connected';
+}
 
-            let isRecording = true;
-            let hasSentDetachMessage = false;
+async function startECGRecording(args, record) {
+    const duration = (args && args[0]) ? args[0] * 1000 : 60000;
+    if (!bluetoothDevice) return 'Bluetooth device not connected';
 
-            const recordingAlert = showCustomAlert(
-                'Recording in progress...<br><strong>Keep electrodes attached!</strong><br><br>'+
-                '<div><button id="simDisconnectBtn" style="margin-right:10px; padding: 5px; background: red; color: white; border: none; border-radius: 5px; cursor: pointer;">Simulate Disconnect</button>'+
-                '<button id="simElectrodeBtn" style="padding: 5px; background: orange; color: white; border: none; border-radius: 5px; cursor: pointer;">Simulate Electrode Off</button></div>',
-                'http://127.0.0.1:8000/static/js/Animation-heart-ecg.json'
-            );
+    ecgData = [];
+    totalSamples = 0;
+    validSamples = 0;
+    lastElectrodeStatus = true;
+    _recordingBreaker = null;
 
-            // Adding a small delay to attach listeners after DOM is updated by showCustomAlert
-            setTimeout(() => {
-                const discBtn = document.getElementById("simDisconnectBtn");
-                const elecBtn = document.getElementById("simElectrodeBtn");
-                if(discBtn) discBtn.onclick = () => { onDisconnected({target:{name:'Simulated Device'}}); };
-                if(elecBtn) elecBtn.onclick = () => { lastElectrodeStatus = false; };
-            }, 500);
+    return new Promise((resolve) => {
+        let isRecording = true;
+        const startTime = Date.now();
 
-            const stopRecording = async (reason = "completed") => {
+        showRecordingControls({
+            onBreak: () => {
                 if (!isRecording) return;
                 isRecording = false;
-
-                recordingAlert.remove();
-
-                const actualDuration = Date.now() - startTime;
-
-                if (reason === "electrodes_lost") {
-                    showCustomAlert(
-                        'Electrodes detached!<br>Recording stopped.',
-                        'http://127.0.0.1:8000/static/js/Warning.json',
-                        8000
-                    );
-                } else if (reason === "device disconnected") {
-                    showCustomAlert(
-                        'Device Disconnected!<br>Recording stopped.',
-                        'http://127.0.0.1:8000/static/js/Warning.json',
-                        8000
-                    );
-                } else {
-                    showCustomAlert(
-                        lastElectrodeStatus
-                            ? `Recording complete!<br>${validSamples} samples`
-                            : `Recording finished<br>Electrodes were unstable`,
-                        lastElectrodeStatus ? 'http://127.0.0.1:8000/static/js/Animation-done.json'
-                            : 'http://127.0.0.1:8000/static/js/Animation-warning.json',
-                        6000
-                    );
-                }
-
-                // Send final payload
-                const payload = {
-                    recordID: record,
-                    patientId: patientId,
-                    timestamp: new Date().toISOString(),
-                    durationMs: actualDuration,
-                    totalSamples,
-                    validSamples,
-                    electrodesStable: lastElectrodeStatus,
-                    samplingRateHz: totalSamples / (actualDuration / 1000) || 0,
-                    ecgValues: ecgData,
-                    stoppedEarly: reason === "electrodes_lost" || reason === "device disconnected"
-                };
-
-                if (lastElectrodeStatus && reason === "completed") {
-                     await postECGRecord(payload);
-                }
-
-                chatSocket.send(JSON.stringify({
-                    type: 'js_function_response',
-                    message: reason === "electrodes_lost" ? 'Recording aborted: Electrodes detached' : 
-                             reason === "device disconnected" ? 'FATAL ERROR: The device was powered off.' : 'ECG recording completed',
-                    electrodesOK: lastElectrodeStatus,
-                    stoppedEarly: reason === "electrodes_lost" || reason === "device disconnected",
-                    validSamples,
-                    patient_id: patientId,
-                    sender: "executor",
-                }));
-            };
-
-            const startTime = Date.now();
-            let sampleIndex = 0;
-
-            const handleNotification = () => {
-                if (!isRecording) return;
-                if (BLE_MANAGER.isRecording === false) { 
-                    console.error("Recording stopped by BLE_MANAGER"); 
-                    stopRecording("device disconnected");
-                    return; 
-                }
-
-                if (!lastElectrodeStatus) {
-                    if (!hasSentDetachMessage) {
-                        hasSentDetachMessage = true;
-                        chatSocket.send(JSON.stringify({
-                            type: 'js_function_response',
-                            message: 'Electrodes detached! Recording stopped.',
-                            electrodesOK: false,
-                            patient_id: patientId,
-                            sender: "executor",
-                        }));
-                    }
-                    stopRecording("electrodes_lost");
-                    return;
-                }
-
-                // Append dummy data
-                for (let i = 0; i < 5; i++) {
-                    totalSamples++;
-                    const mv = ecgSampleData[sampleIndex % ecgSampleData.length];
-                    sampleIndex++;
-                    ecgData.push(mv);
-                    validSamples++;
-                }
-                
-                if (Date.now() - startTime >= duration) {
-                    stopRecording("completed");
-                } else {
-                    setTimeout(handleNotification, 20); // 20ms = 50Hz updates of 5 samples each = 250Hz roughly
-                }
-            };
-
-            // Start simulation loop
-            setTimeout(handleNotification, 20);
-
-        } catch (error) {
-            console.error('ECG Recording Error:', error);
-            showCustomAlert('Recording failed!', null, 5000);
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: `Error: ${error.message}`,
-                patient_id: patientId,
-                sender: "executor",
-            }));
-        }
-
-    } else if (functionName === 'request_cardiac_mri') {
-        try {
-            console.log("the MRI is request is activate")
-            handleUpload('mriForm', 'http://127.0.0.1:8000/chatbot/api/mri/upload/');
-
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: 'Cardiac MRI completed successfully',
-                patient_id: patientId,
-                sender: "executor",
-            }));
-
-        } catch (error) {
-            console.error('Error uploading Cardiac MRI:', error);
-            alert('uploading failed due to an error.');
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: `Error: ${error.message}`,
-                patient_id: patientId,
-                sender: "executor",
-            }));
-        }
-    } else if (functionName === 'request_cardiac_ct') {
-        try {
-            handleUpload('ctForm', 'http://127.0.0.1:8000/chatbot/api/ct/upload/');
-            showCustomAlert(
-                'Uploading Complete Seccussfully. Thanks You',
-                'http://127.0.0.1:8000/static/js/Animation-done.json', // Checkmark animation
-                3000 // Auto-remove after 3 seconds
-            );
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: 'Cardiac CT completed successfully',
-                patient_id: patientId,
-                sender: "executor",
-            }));
-            doc
-
-        } catch (error) {
-            console.error('Error uploading Cardiac CT:', error);
-            alert('uploading failed due to an error.');
-            chatSocket.send(JSON.stringify({
-                type: 'js_function_response',
-                message: `Error: ${error.message}`,
-                patient_id: patientId,
-                sender: "executor",
-            }));
-        }
-
-    }
-}
-
-// Export the executor function
-export { executeTool };
-
-// Plotting function
-
-
-// Custom alert function
-function showCustomAlert(message, animationUrl, duration = null) {
-    // Remove any existing alert
-    const existingAlert = document.querySelector('.custom-alert');
-    if (existingAlert) existingAlert.remove();
-
-    // Create the alert container
-    const alertDiv = document.createElement('div');
-    alertDiv.classList.add('custom-alert');
-    alertDiv.style.position = 'fixed';
-    alertDiv.style.top = '50%';
-    alertDiv.style.left = '50%';
-    alertDiv.style.transform = 'translate(-50%, -50%)';
-    alertDiv.style.zIndex = '1000';
-    alertDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-    alertDiv.style.padding = '20px';
-    alertDiv.style.borderRadius = '10px';
-    alertDiv.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-    alertDiv.style.textAlign = 'center';
-    alertDiv.style.maxWidth = '400px';
-
-    // Add Lottie animation
-    const lottiePlayer = document.createElement('div');
-    lottiePlayer.innerHTML = `
-        <lottie-player 
-            src="${animationUrl}" 
-            background="transparent" 
-            speed="1" 
-            style="width: 300px; height: 300px; margin: 0 auto;" 
-            loop  
-            autoplay
-        ></lottie-player>
-    `;
-
-    // Add text
-    const text = document.createElement('p');
-    text.innerHTML = message;
-    text.style.fontSize = '18px';
-    text.style.fontFamily = 'Arial, sans-serif';
-    text.style.marginTop = '10px';
-
-    // Append elements
-    alertDiv.appendChild(lottiePlayer);
-    alertDiv.appendChild(text);
-    document.body.appendChild(alertDiv);
-
-    // Auto-remove after duration (if provided)
-    if (duration) {
-        setTimeout(() => {
-            alertDiv.remove();
-        }, duration);
-    }
-
-    return alertDiv; // Return for manual removal if needed
-}
-
-// Function to post ECG record
-// async function postECGRecord(ecgData) {
-//     try {
-//         const ecg_record = ecgData.map(d => d.value);
-//         console.log('ECG RECORD TEST:', ecg_record)
-//         const response = await fetch("http://127.0.0.1:8000/chatbot/ecg-records/", {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "application/json",
-//                 'X-CSRFToken': getCSRFToken(),  // Correct
-//                 // Add authentication token if required (e.g., JWT or API key)
-//                 // "Authorization": "Bearer YOUR_TOKEN_HERE"
-//             },
-//             body: JSON.stringify({
-//                 record_id: record,
-//                 ECG: ecg_record.toString(), // Convert array to JSON string as per your model
-//             })
-//         });
-
-//         if (!response.ok) {
-//             throw new Error(`HTTP error! Status: ${response.status}`);
-//         }
-
-//         const result = await response.json();
-//         console.log("ECG Record created successfully:", result);
-//     } catch (error) {
-//         console.error("Error posting ECG record:", error);
-//     }
-// }
-
-async function postECGRecord(payload) {
-    try {
-        // payload now contains: ecgValues (array of numbers), recordID, patientId, etc.
-        const ecgValues = payload.ecgValues || [];  // Safety first
-
-        console.log('ECG RECORD TEST (raw numbers):', ecgValues);
-        console.log(`Sending ${ecgValues.length} ECG samples to server...`);
-
-        const response = await fetch("http://127.0.0.1:8000/chatbot/ecg-records/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCSRFToken(),  // Django CSRF protection
+                _recordingBreaker = null;
+                hideRecordingControls();
+                resolve('Recording aborted by user');
             },
-            body: JSON.stringify({
-                record_id: record,           // Use correct record ID
-                // patient: payload.patientId,            // Assuming your model has patient ForeignKey
-                // OR if your Django model uses TextField and expects string:
-                ECG: ecgValues.join(','),
-
-                // // Optional metadata (very useful for doctors & debugging)
-                // duration_seconds: payload.durationMs / 1000,
-                // valid_samples: payload.validSamples,
-                // total_samples: payload.totalSamples,
-                // electrodes_stable: payload.electrodesStable,
-                // sampling_rate_hz: parseFloat(payload.samplingRateHz.toFixed(2)),
-                // recorded_at: payload.timestamp,
-            })
+            onDisconnect: () => {
+                if (!isRecording) return;
+                isRecording = false;
+                _recordingBreaker = null;
+                hideRecordingControls();
+                resolve('Recording failed: Bluetooth connection lost');
+            },
+            onElectrodeOff: () => {
+                if (!isRecording) return;
+                isRecording = false;
+                _recordingBreaker = null;
+                hideRecordingControls();
+                resolve('Recording failed: electrode off or moved during recording');
+            },
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
+        const stopRecording = (reason) => {
+            if (!isRecording) return;
+            isRecording = false;
+            _recordingBreaker = null;
+            hideRecordingControls();
 
-        const result = await response.json();
-        console.log("ECG Record created successfully:", result);
+            if (reason === 'completed') {
+                const payload = {
+                    recordID: record,
+                    ecgValues: ecgData,
+                    totalSamples,
+                    validSamples,
+                };
+                postECGRecord(payload)
+                    .then(() => resolve('ECG recording completed'))
+                    .catch(() => resolve('ECG recording completed but save failed'));
+            } else if (reason === 'error') {
+                resolve('Recording failed due to an error');
+            }
+        };
 
-        // Optional: Show success to user
-        showCustomAlert("ECG saved successfully!",
-            "http://127.0.0.1:8000/static/js/Animation-done.json", 4000);
+        let sampleIndex = 0;
+        const tick = () => {
+            if (!isRecording) return;
+            for (let i = 0; i < 5; i++) {
+                totalSamples++;
+                const mv = ecgSampleData[sampleIndex % ecgSampleData.length];
+                sampleIndex++;
+                ecgData.push(mv);
+                validSamples++;
+            }
+            if (Date.now() - startTime >= duration) {
+                stopRecording('completed');
+            } else {
+                setTimeout(tick, 20);
+            }
+        };
+        setTimeout(tick, 20);
+    });
+}
 
-    } catch (error) {
-        console.error("Error posting ECG record:", error);
-        showCustomAlert("Failed to save ECG data", null, 5000);
+function breakCurrentAction() {
+    if (_recordingBreaker) {
+        _recordingBreaker();
     }
 }
 
+function showRecordingControls(handlers) {
+    hideRecordingControls();
 
+    const panel = document.createElement('div');
+    panel.id = 'recording-controls';
+    panel.style.cssText = 'position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:8px; z-index:9999;';
 
-async function handleUpload(formId, endpoint) {
-    console.log("We Call the Echo")
+    // Disconnect button
+    const disconnectBtn = document.createElement('button');
+    disconnectBtn.textContent = '📡 Lost Connection';
+    disconnectBtn.style.cssText = 'padding:10px 16px; background:#6c757d; color:white; border:none; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    disconnectBtn.onclick = () => {
+        disconnectBtn.style.opacity = '0.5';
+        disconnectBtn.textContent = '📡 Disconnecting...';
+        disconnectBtn.disabled = true;
+        handlers.onDisconnect();
+    };
+    panel.appendChild(disconnectBtn);
+
+    // Electrode button
+    const electrodeBtn = document.createElement('button');
+    electrodeBtn.id = 'electrode-btn';
+    electrodeBtn.textContent = '⚡ Off/Move Electrode';
+    electrodeBtn.style.cssText = 'padding:10px 16px; background:#fd7e14; color:white; border:none; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+    electrodeBtn.onclick = () => {
+        electrodeBtn.style.opacity = '0.5';
+        electrodeBtn.textContent = '⚡ Electrode OFF...';
+        electrodeBtn.disabled = true;
+        handlers.onElectrodeOff();
+    };
+    panel.appendChild(electrodeBtn);
+
+    // Break button
+    const breakBtn = document.createElement('button');
+    breakBtn.textContent = '⏹ Break';
+    breakBtn.style.cssText = 'padding:10px 16px; background:#dc3545; color:white; border:none; border-radius:8px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 4px 12px rgba(220,53,69,0.4);';
+    breakBtn.onclick = () => {
+        breakBtn.style.opacity = '0.5';
+        breakBtn.textContent = '⏹ Breaking...';
+        breakBtn.disabled = true;
+        handlers.onBreak();
+    };
+    panel.appendChild(breakBtn);
+
+    document.body.appendChild(panel);
+    _recordingBreaker = handlers.onBreak;
+}
+
+function hideRecordingControls() {
+    const panel = document.getElementById('recording-controls');
+    if (panel) panel.remove();
+    _recordingBreaker = null;
+
+    const status = document.getElementById('recording-status');
+    if (status) status.remove();
+}
+
+let _statusTimeout = null;
+function showRecordingStatus(text) {
+    const existing = document.getElementById('recording-status');
+    if (existing) existing.remove();
+    if (_statusTimeout) clearTimeout(_statusTimeout);
+
+    const div = document.createElement('div');
+    div.id = 'recording-status';
+    div.style.cssText = 'position:fixed; bottom:175px; right:20px; padding:8px 14px; background:#333; color:white; border-radius:6px; font-size:12px; z-index:9999; max-width:260px; box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+    div.textContent = text;
+    document.body.appendChild(div);
+
+    _statusTimeout = setTimeout(() => {
+        div.remove();
+        _statusTimeout = null;
+    }, 4000);
+}
+
+async function requestUpload(formId, endpoint) {
     const form = document.getElementById(formId);
     const modalId = formId.replace('Form', 'Modal');
     const modalElement = document.getElementById(modalId);
+    if (!form || !modalElement) return;
 
-    if (!form || !modalElement) {
-        console.error(`Form with ID ${formId} or Modal with ID ${modalId} not found.`);
-        return;
-    }
+    const modalInstance = new bootstrap.Modal(modalElement);
+    modalInstance.show();
 
-    // Show the modal programmatically
-    try {
-        const modalInstance = new bootstrap.Modal(modalElement);
-        modalInstance.show();
-    } catch (error) {
-        console.error('Error showing modal:', error);
-        alert('Unable to open the upload form. Please try again.');
-        return;
-    }
-
-    // Prevent multiple event listeners by cloning the form
     const newForm = form.cloneNode(true);
     form.parentNode.replaceChild(newForm, form);
-
-    // Reassign form to the new cloned form
     const updatedForm = document.getElementById(formId);
 
-    updatedForm.addEventListener('submit', async function (e) {
+    const handler = async function (e) {
         e.preventDefault();
         const formData = new FormData(updatedForm);
-        formData.append("patient", patient_id); // Add patient ID
-
+        formData.append('patient', patient_id);
         try {
             const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData,
-                headers: {
-                    'X-CSRFToken': getCSRFToken(), // CSRF token for Django
-                },
+                headers: { 'X-CSRFToken': getCSRFToken() },
             });
-            const data = await response.json();
-
             if (response.ok) {
-                showCustomAlert(
-                    'Uploading Complete Seccussfully. Thanks You',
-                    'http://127.0.0.1:8000/static/js/Animation-done.json', // Checkmark animation
-                    3000 // Auto-remove after 3 seconds
-                );
-                updatedForm.reset(); // Reset the form
-                const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                if (modalInstance) {
-                    modalInstance.hide(); // Hide the modal
-                } else {
-                    console.warn(`Bootstrap modal instance for ${modalId} not found.`);
-                    modalElement.classList.remove('show'); // Fallback to hide manually
-                    modalElement.style.display = 'none';
-                    document.body.classList.remove('modal-open');
-                    document.querySelector('.modal-backdrop')?.remove();
-                }
+                showCustomAlert('Upload Successful!', null, 3000);
+                updatedForm.reset();
+                modalInstance.hide();
             } else {
-                alert("Upload failed: " + JSON.stringify(data));
+                alert('Upload failed');
             }
         } catch (error) {
             console.error('Upload error:', error);
-            alert("Something went wrong. Please try again.");
         }
+        updatedForm.removeEventListener('submit', handler);
+    };
+    updatedForm.addEventListener('submit', handler);
+}
+
+async function postECGRecord(payload) {
+    const ecgValues = payload.ecgValues || [];
+    console.log(`[EXECUTOR] Sending ${ecgValues.length} ECG samples...`);
+    const response = await fetch('/chatbot/ecg-records/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
+        body: JSON.stringify({
+            record_id: payload.recordID,
+            ECG: ecgValues.join(','),
+        }),
     });
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+    console.log('[EXECUTOR] ECG saved successfully');
 }
 
-// This function is called when user clicks the pairing button
-async function handleUserPairingClick() {
-    if (!pendingPairingRequest) {
-        console.error('No pending pairing request');
-        return;
-    }
-
-    const { chatSocket, patientId } = pendingPairingRequest;
-
-    try {
-        console.log('User clicked pairing - showing device selector...');
-
-        // NOW we can call requestDevice because it's from a user click
-        bluetoothDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ name: 'ESP32_ECG_Device' }],
-            optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b']
-        });
-        console.log('Device selected:', bluetoothDevice.name);
-
-        // Connect to GATT server
-        gattServer = await bluetoothDevice.gatt.connect();
-        console.log('GATT connected:', gattServer.connected);
-
-        // Set up disconnect handler
-        bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-
-        // Clear pending request
-        pendingPairingRequest = null;
-
-        // Hide the button
-        hidePairingButton();
-
-        // Send success notification to agent
-        chatSocket.send(JSON.stringify({
-            type: 'js_function_response',
-            message: 'Device paired successfully',
-            patient_id: patientId,
-            sender: "executor",
-            pairing_completed: true
-        }));
-
-
-        return { success: true };
-
-    } catch (error) {
-        console.error('User pairing failed:', error);
-
-        bluetoothDevice = null;
-        gattServer = null;
-
-        // Keep the button visible so user can retry
-        updatePairingButtonError(error.message);
-
-        // Notify agent of failure
-        chatSocket.send(JSON.stringify({
-            type: 'js_function_response',
-            message: `Pairing failed: ${error.message}`,
-            patient_id: patientId,
-            sender: "executor",
-            pairing_failed: true
-        }));
-
-        return { success: false, error: error.message };
-    }
+function showCustomAlert(message, animationUrl, duration) {
+    const existing = document.querySelector('.custom-alert');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.className = 'custom-alert';
+    div.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:1000; background:rgba(255,255,255,0.95); padding:20px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); text-align:center; max-width:400px;';
+    const p = document.createElement('p');
+    p.innerHTML = message;
+    p.style.cssText = 'font-size:18px; margin:10px 0;';
+    div.appendChild(p);
+    document.body.appendChild(div);
+    if (duration) setTimeout(() => div.remove(), duration);
+    return div;
 }
 
-// 1. Ensure your variables are accessible to this function
-// (gattServer, chatSocket, etc. should be in a scope this function can see)
-
-function onDisconnected(event) {
-    const deviceName = event.target.name || "ECG Device";
-    console.warn(`[HALT] ${deviceName} disconnected from Bluetooth.`);
-
-    // 2. STOP THE RECORDING LOGIC IMMEDIATELY
-    BLE_MANAGER.isRecording = false;
-    
-    // 3. REMOVE THE DATA LISTENER (The "Kill Switch")
-    // This prevents handleNotification from ever running again
-    if (characteristic) {
-        characteristic.removeEventListener('characteristicvaluechanged', handleNotification);
-        console.log("Listener detached: handleNotification will no longer execute.");
-    }
-
-    // 4. CLEAR TIMERS (Stop the 60-second countdown)
-    if (typeof recordingInterval !== 'undefined') {
-        clearInterval(recordingInterval);
-        console.log("Recording timer stopped.");
-    }
-
-    // 5. NOTIFY THE AGENT / WEBSOCKET
-    if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-        chatSocket.send(JSON.stringify({
-            type: 'js_function_response',
-            message: 'FATAL ERROR: The device was powered off or lost connection. The session has been terminated.',
-            status: 'failed',
-            sender: 'executor'
-        }));
-    }
-
-    // 6. UI CLEANUP
-    // Remove any loading spinners or "Recording..." alerts
-    document.getElementById('status-indicator').innerText = "Disconnected";
-    alert("Bluetooth link lost. Please ensure the ECG device is powered on and try again.");
-    
-    // 7. RESET GLOBALS
-    gattServer = null;
-    deviceConnected = false;
+function getCSRFToken() {
+    return document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1] || '';
 }
-// UI Functions
-function showPairingButton() {
-    let btn = document.getElementById('bluetooth-pair-btn');
-
-    if (!btn) {
-        btn = document.createElement('button');
-        btn.id = 'bluetooth-pair-btn';
-        btn.innerHTML = '🔗 Connect ECG Device';
-        btn.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
-            z-index: 10000;
-            transition: all 0.3s ease;
-            animation: slideIn 0.5s ease, pulse 2s infinite;
-        `;
-
-        btn.onmouseover = () => {
-            btn.style.transform = 'scale(1.05)';
-            btn.style.boxShadow = '0 12px 24px rgba(102, 126, 234, 0.6)';
-        };
-
-        btn.onmouseout = () => {
-            btn.style.transform = 'scale(1)';
-            btn.style.boxShadow = '0 8px 16px rgba(102, 126, 234, 0.4)';
-        };
-
-        btn.onclick = async () => {
-            btn.disabled = true;
-            btn.innerHTML = '⏳ Connecting...';
-            btn.style.background = '#6c757d';
-
-            await handleUserPairingClick();
-        };
-
-        document.body.appendChild(btn);
-
-        // Add animations
-        if (!document.getElementById('pairing-btn-styles')) {
-            const style = document.createElement('style');
-            style.id = 'pairing-btn-styles';
-            style.textContent = `
-                @keyframes slideIn {
-                    from {
-                        transform: translateX(400px);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateX(0);
-                        opacity: 1;
-                    }
-                }
-                @keyframes pulse {
-                    0%, 100% { transform: scale(1); }
-                    50% { transform: scale(1.05); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-
-    btn.style.display = 'block';
-}
-
-function hidePairingButton() {
-    const btn = document.getElementById('bluetooth-pair-btn');
-    if (btn) {
-        btn.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            btn.style.display = 'none';
-        }, 300);
-    }
-}
-
-function updatePairingButtonError(errorMsg) {
-    const btn = document.getElementById('bluetooth-pair-btn');
-    if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '❌ Failed - Try Again';
-        btn.style.background = '#dc3545';
-
-        setTimeout(() => {
-            btn.innerHTML = '🔗 Connect ECG Device';
-            btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        }, 2000);
-    }
-}
-
-// Make function available globally
-window.handleUserPairingClick = handleUserPairingClick;

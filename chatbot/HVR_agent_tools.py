@@ -1,4 +1,3 @@
-import time
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 import json
@@ -8,138 +7,63 @@ from .models import Patient, Clinical_Record, ECG_record
 import neurokit2 as nk
 
 
-from .utils import response_events
+@tool
+def check_connect(config: RunnableConfig) -> str:
+    """
+    Ask the patient to check if Bluetooth is connected on their device.
+    The patient will confirm whether Bluetooth is on or off.
+
+    Args:
+        config: Configuration dictionary containing the patient_id.
+
+    Returns:
+        str: Status of the Bluetooth check request.
+    """
+    return "I've asked the patient to check their Bluetooth. Please wait for their response."
 
 
 @tool
-async def check_connect(config: RunnableConfig) -> str:
+def pair_device(config: RunnableConfig) -> str:
     """
-    this tool Ask the patient to Check if the Bluetooth is connected on the patient's device.
+    Ask the patient to pair their ECG Bluetooth device.
+    The patient will attempt to pair and confirm the result.
 
     Args:
-        config: Configuration dictionary containing the patient_id and WebSocket of the patient.
+        config: Configuration dictionary containing the patient_id.
 
     Returns:
-        str: "asked sucessfully" if Bluetooth is connected, "Failed to check" otherwise.
+        str: Status of the pairing request.
     """
-    configuration = config.get("configurable", {})
-    websocket = configuration.get("websocket", None)
-
-    if not websocket:
-        return "No WebSocket connection provided."
-
-    try:
-        start_time = time.time()
-        await websocket.send(
-            json.dumps(
-                {
-                    "type": "call_js_function",
-                    "function_name": "checkBluetoothConnection",
-                    "args": [],
-                    "sender": "tool",
-                }
-            )
-        )
-
-        return "we succesfully check"
-
-    except Exception as e:
-
-        return "Check Failed"
+    return "I've asked the patient to pair their ECG device. Waiting for their confirmation."
 
 
 @tool
-async def pair_device(config: RunnableConfig) -> str:
+def recording_request(config: RunnableConfig) -> str:
     """
-    Ask the patient to pair the ECG Bluetooth device.
+    Request the patient to start a 60-second ECG recording.
+    The patient will record and the data will be saved automatically.
 
     Args:
-        config: Configuration dictionary containing the patient_id and WebSocket of the patient.
+        config: Configuration dictionary containing the patient_id.
 
     Returns:
-        str: "Pairing request sent successfully" if the request is sent, "Failed to send pairing request" otherwise.
+        str: Status of the recording request.
     """
-    configuration = config.get("configurable", {})
-    websocket = configuration.get("websocket", None)
-
-    if not websocket:
-        return "No WebSocket connection provided."
-
-    try:
-        start_time = time.time()
-        await websocket.send(
-            json.dumps(
-                {
-                    "type": "call_js_function",
-                    "function_name": "pairBluetoothDevice",
-                    "args": [],
-                    "sender": "tool",
-                }
-            )
-        )
-        print(f"Tool: Sent pairing request at {time.time()}")
-        return "Pairing request sent successfully"
-    except Exception as e:
-        print(f"Tool: Error sending pairing request: {str(e)}")
-        return "Failed to send pairing request"
-
-
-@tool
-async def recording_request(config: RunnableConfig) -> str:
-    """
-    this tool  request the client side to start recording his ECG and send back the record it just request not return the record.
-    you should wait the client side response after send reequest.
-
-    Args:
-
-    config: Configuration dictionary containing the patient_id and WebSocket of the patient.
-
-    Returns:
-        str: A message indicating the recording request status.
-    """
-    configuration = config.get("configurable", {})
-    websocket = configuration.get("websocket", None)
-
-    if not websocket:
-        return "No WebSocket connection provided."
-
-    try:
-        start_time = time.time()
-        await websocket.send(
-            json.dumps(
-                {
-                    "type": "call_js_function",
-                    "function_name": "startECGRecording",
-                    "args": [60, True],
-                    "sender": "tool",
-                }
-            )
-        )
-        print(f"Tool: Sent recording request at {time.time()}")
-        return "Recording request sent successfully"
-    except Exception as e:
-        print(f"Tool: Error sending recording request: {str(e)}")
-        return "Failed to send Recording request"
+    return "I've asked the patient to start the ECG recording. The data will be saved automatically when complete."
 
 
 @tool
 def check_record_ECG_correctly(config: RunnableConfig) -> str:
     """
-    This tool verifies whether the ECG record has been saved correctly in database and ensures that all ECG values are valid and free of errors.
-    It checks for any missing, corrupted, or invalid data within the record.
-    If any issues are detected, the tool identifies them and reports an error.
-    Additionally, the tool performs data cleaning by removing noise, correcting inconsistencies, and ensuring the ECG values are properly formatted.
-    Once the cleaning process is complete, it saves a validated and cleaned version of the ECG record.
-    In case of any errors or failures during the process, the tool returns a detailed error message specifying the issue.
-
+    Verify whether the ECG record has been saved correctly in the database.
+    Checks for missing, corrupted, or invalid data.
+    If valid, returns confirmation. If missing, reports the issue.
 
     Args:
-        config: Configuration dictionary containing the patient_id and WebSocket of the patient.
-
-
+        config: Configuration dictionary containing the patient_id.
 
     Returns:
-        str: A message indicating the save status.
+        str: A message indicating the ECG save status.
     """
     today = timezone.now().date()
     configuration = config.get("configurable", {})
@@ -147,12 +71,11 @@ def check_record_ECG_correctly(config: RunnableConfig) -> str:
     if not patient_id:
         raise ValueError("No patient ID configured.")
     try:
-        patient_id = UUID(patient_id)  # Convert string to UUID object
+        patient_id = UUID(patient_id)
     except ValueError:
         error = f"Invalid patient ID format. Must be a valid UUID.{patient_id}"
         raise ValueError(error)
     try:
-        # Fetch the patient instance
         patient = Patient.objects.get(id=patient_id)
     except Patient.DoesNotExist:
         raise ValueError(f"No patient found with ID {patient_id}.")
@@ -168,76 +91,41 @@ def check_record_ECG_correctly(config: RunnableConfig) -> str:
                 record=clinical_data, created_at__date=today
             ).exists()
             if has_ecg_today:
-                ### treat the ECG here
                 try:
                     ecg_record = ECG_record.objects.get(record=clinical_data)
                     ecg_data = "[" + ecg_record.ECG + "]"
-                    ecg_data = json.loads(
-                        ecg_data
-                    )  # e.g., "[1.2, 2.3, 3.4]" -> [1.2, 2.3, 3.4]
+                    ecg_data = json.loads(ecg_data)
                 except json.JSONDecodeError:
                     print("Invalid ECG data format")
-                    return
-                sampling_rate = (
-                    len(ecg_data) / 60
-                )  # djust based on your data's actual sampling rate
+                    return "ECG data is corrupted or invalid."
+                sampling_rate = len(ecg_data) / 60
                 ecg_signals, info = nk.ecg_process(
                     ecg_data, sampling_rate=sampling_rate
                 )
 
-                # check if the ECG is valid (e.g., if peaks are detected)
-                if (
-                    len(info["ECG_R_Peaks"]) == 0
-                ):  # Fixed: Check length instead of array directly
-                    return "ECG validation failed: No R-peaks detected"
-
-                
+                if len(info["ECG_R_Peaks"]) == 0:
+                    return "ECG validation failed: No R-peaks detected. The recording may be invalid."
 
                 print(f"ECG record for {clinical_data} cleaned and saved successfully")
-
-                return "ECG record saved successfully."
+                return "ECG record validated and saved successfully in the database."
             else:
-                return (
-                    "the ECG record not find in database there is no ECG record today"
-                )
+                return "No ECG record found in the database for today. The recording may not have been saved."
         else:
-            return "the Patient did not recording his clinical data yet!"
+            return "No clinical record found for today. The patient needs to record their clinical data first."
     except Exception as e:
-        print(f"Tool: Error sending recording request: {str(e)}")
-        return f"Tool: Error sending recording request: {str(e)}"
+        print(f"Tool: Error checking ECG record: {str(e)}")
+        return f"Error checking ECG record: {str(e)}"
+
 
 @tool
-async def finish_recording(config: RunnableConfig) -> str:
+def finish_recording(config: RunnableConfig) -> str:
     """
-    this tool notify the patient that all his ECG data is collected successfully .
+    Notify that the ECG recording process is complete and the system should proceed to imaging collection.
 
     Args:
-        config: Configuration dictionary containing the patient_id and WebSocket of the patient.
+        config: Configuration dictionary containing the patient_id.
 
     Returns:
-        str: "Notify sucessfully" if no problem , "Failed to notify" otherwise.
+        str: Confirmation message.
     """
-    configuration = config.get("configurable", {})
-    websocket = configuration.get("websocket", None)
-
-    if not websocket:
-        return "No WebSocket connection provided."
-
-    try:
-        
-        await websocket.send(
-            json.dumps(
-                {
-                    "type": "swap_webSocket2",
-                    "function_name": "swap_webSocket2",
-                    "args": [],
-                    "sender": "tool",
-                }
-            )
-        )
-
-        return "we succesfully notify"
-
-    except Exception as e:
-
-        return "Notify Failed"
+    return "ECG recording process completed successfully. Ready to proceed to imaging."

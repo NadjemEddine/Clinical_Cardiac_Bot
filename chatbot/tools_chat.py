@@ -3,7 +3,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
-from .models import Clinical_Record  # Ensure you import the Clinical_data model correctly
+from .models import Clinical_Record
 from accounts.models import Patient
 from typing import Dict, Any
 import json
@@ -19,12 +19,9 @@ from langchain_core.runnables import RunnableLambda
 from langgraph.prebuilt import ToolNode
 
 
-from typing import Dict, Any
-import json
 from django.core.exceptions import ObjectDoesNotExist
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
-from .models import Clinical_Record  # Ensure you import the Clinical_Record model correctly
 
 
 @tool
@@ -151,53 +148,18 @@ def update_missing_clinical_data(*, config: RunnableConfig, clinical_data: str) 
 
 
 @tool
-async def finish_collected(config: RunnableConfig) -> str:
+def finish_collected(config: RunnableConfig) -> str:
     """
-    this tool notify the patient that all his clinical data is collected successfully .
+    Notify that all daily clinical data has been collected and the system should proceed to ECG recording.
 
     Args:
-        config: Configuration dictionary containing the patient_id and WebSocket of the patient.
+        config: Configuration dictionary containing the patient_id.
 
     Returns:
-        str: "Notify sucessfully" if no problem , "Failed to notify" otherwise.
+        str: Confirmation message.
     """
-    configuration = config.get("configurable", {})
-    websocket = configuration.get("websocket", None)
+    return "All daily clinical data has been collected successfully. Ready to proceed."
 
-    if not websocket:
-        return "No WebSocket connection provided."
-
-    try:
-        
-        await websocket.send(
-            json.dumps(
-                {
-                    "type": "swap_webSocket",
-                    "function_name": "swap_webSocket",
-                    "args": [],
-                    "sender": "tool",
-                }
-            )
-        )
-
-        return "we succesfully notify"
-
-    except Exception as e:
-
-        return "Notify Failed"
-
-# def handle_tool_error(state) -> dict:
-#     error = state.get("error")
-#     tool_calls = state["messages"][-1].tool_calls
-#     return {
-#         "messages": [
-#             ToolMessage(
-#                 content=f"Error: {repr(error)}\n please fix your mistakes.",
-#                 tool_call_id=tc["id"],
-#             )
-#             for tc in tool_calls
-#         ]
-#     }
 
 def handle_tool_error(state) -> dict:
     error = state.get("error")
@@ -231,4 +193,3 @@ def create_tool_node_with_fallback(tools: list) -> dict:
     return ToolNode(tools).with_fallbacks(
         [RunnableLambda(handle_tool_error)], exception_key="error"
     )
-

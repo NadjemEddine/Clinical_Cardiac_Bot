@@ -25,7 +25,10 @@ from .FuzzyCHADs2Score import FuzzyCHADS2Risk
 from .FuzzyCHA2DS2Score import FuzzyCHA2DS2VAScRisk
 from .FuzzyHASBLEDScore import FuzzyHASBLEDRisk
 
-# from .agent import create_agent, llm
+from .agent import create_agent as create_daily_agent
+from .Welcome_agent import create_agent as create_welcome_agent
+from .HVR_agent import create_agent as create_hvr_agent
+from .imaging_agent import create_agent as create_imaging_agent
 
 
 from django.http import Http404, JsonResponse
@@ -612,3 +615,190 @@ def risk_scores_view(request, recordID):
     }
 
     return render(request, 'chatbot/medical_scores.html', context)
+
+
+# ---------------------------------------------------------------------------
+# HTTP Agent API endpoints (replacing WebSocket consumers)
+# ---------------------------------------------------------------------------
+
+from langchain_core.messages import ToolMessage
+
+# Singleton agents — they share the same MemorySaver across requests,
+# so thread_id checkpointing works correctly.
+_daily_agent = None
+_welcome_agent = None
+_hvr_agent = None
+_imaging_agent = None
+
+
+def _get_daily_agent():
+    global _daily_agent
+    if _daily_agent is None:
+        _daily_agent = create_daily_agent()
+    return _daily_agent
+
+
+def _get_welcome_agent():
+    global _welcome_agent
+    if _welcome_agent is None:
+        _welcome_agent = create_welcome_agent()
+    return _welcome_agent
+
+
+def _get_hvr_agent():
+    global _hvr_agent
+    if _hvr_agent is None:
+        _hvr_agent = create_hvr_agent()
+    return _hvr_agent
+
+
+def _get_imaging_agent():
+    global _imaging_agent
+    if _imaging_agent is None:
+        _imaging_agent = create_imaging_agent()
+    return _imaging_agent
+
+
+def _invoke_agent(agent, agent_name, message, patient_id, thread_id):
+    """Run agent synchronously and extract response + signals."""
+    print(f"\n===== AGENT INVOKE [{agent_name}] =====")
+    print(f"  thread_id={thread_id}  patient_id={patient_id}")
+    print(f"  message='{message[:100] if message else ''}'")
+
+    config = {
+        "configurable": {
+            "patient_id": patient_id,
+            "thread_id": thread_id,
+        }
+    }
+    result = agent.invoke({"messages": [message]}, config)
+    messages = result.get("messages", [])
+
+    print(f"  total_messages={len(messages)}")
+
+    response_text = ""
+    action = None
+    swap = None
+
+    # Detect action/swap signals by tool NAME (not content, so LLM sees natural language)
+    TOOL_ACTIONS = {
+        'check_connect': 'checkBluetoothConnection',
+        'pair_device': 'pairBluetoothDevice',
+        'recording_request': 'startECGRecording',
+        'request_EchoImaging': 'requestEchoImaging',
+        'request_CardiacMRI': 'requestCardiacMRI',
+        'request_CardiacCT': 'requestCardiacCT',
+    }
+    TOOL_SWAPS = {
+        'finish_collected': 'hvr',
+        'finish_recording': 'imaging',
+    }
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            tool_name = msg.name or ""
+            if tool_name in TOOL_ACTIONS:
+                action = TOOL_ACTIONS[tool_name]
+                print(f"  >> ACTION detected from tool '{tool_name}': {action}")
+            elif tool_name in TOOL_SWAPS:
+                swap = TOOL_SWAPS[tool_name]
+                print(f"  >> SWAP detected from tool '{tool_name}': {swap}")
+
+    # Swap is terminal — if agent called a finish tool, ignore any action
+    if swap:
+        action = None
+        print(f"  >> Swap overrides action — action cleared")
+
+    # Get the last AIMessage content as the user-facing response
+    for msg in reversed(messages):
+        if hasattr(msg, 'type') and msg.type == 'ai':
+            response_text = msg.content or ""
+            print(f"  response_text='{response_text[:200]}...'")
+            break
+
+    print(f"  action={action}  swap={swap}")
+    print(f"========================================\n")
+    return response_text, action, swap
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def daily_agent_api(request):
+    """HTTP endpoint for the daily clinical data collection agent."""
+    message = request.data.get('message', '')
+    thread_id = request.data.get('thread_id')
+    if not thread_id:
+        thread_id = str(uuid.uuid4())
+    patient_id = str(request.user.id)
+
+    agent = _get_daily_agent()
+    response_text, action, swap = _invoke_agent(agent, 'DAILY', message, patient_id, thread_id)
+
+    return Response({
+        'response': response_text,
+        'action': action,
+        'swap': swap,
+        'thread_id': thread_id,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def welcome_agent_api(request):
+    """HTTP endpoint for the welcome / static data collection agent."""
+    message = request.data.get('message', '')
+    thread_id = request.data.get('thread_id')
+    if not thread_id:
+        thread_id = str(uuid.uuid4())
+    patient_id = str(request.user.id)
+
+    agent = _get_welcome_agent()
+    response_text, action, swap = _invoke_agent(agent, 'WELCOME', message, patient_id, thread_id)
+
+    return Response({
+        'response': response_text,
+        'action': action,
+        'swap': swap,
+        'thread_id': thread_id,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def hvr_agent_api(request):
+    """HTTP endpoint for the HVR / ECG recording agent."""
+    message = request.data.get('message', '')
+    thread_id = request.data.get('thread_id')
+    if not thread_id:
+        thread_id = str(uuid.uuid4())
+    patient_id = str(request.user.id)
+
+    agent = _get_hvr_agent()
+    response_text, action, swap = _invoke_agent(agent, 'HVR', message, patient_id, thread_id)
+
+    return Response({
+        'response': response_text,
+        'action': action,
+        'swap': swap,
+        'thread_id': thread_id,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def imaging_agent_api(request):
+    """HTTP endpoint for the cardiac imaging collection agent."""
+    message = request.data.get('message', '')
+    thread_id = request.data.get('thread_id')
+    if not thread_id:
+        thread_id = str(uuid.uuid4())
+    patient_id = str(request.user.id)
+
+    agent = _get_imaging_agent()
+    response_text, action, swap = _invoke_agent(agent, 'IMAGING', message, patient_id, thread_id)
+
+    return Response({
+        'response': response_text,
+        'action': action,
+        'swap': swap,
+        'thread_id': thread_id,
+    })

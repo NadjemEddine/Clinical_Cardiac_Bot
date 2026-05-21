@@ -54,7 +54,6 @@ class Assistant:
         while True:
             configuration = config.get("configurable", {})
             patient_id = configuration.get("patient_id", None)
-            websocket = configuration.get("websocket", None)
             state = {**state, "user_info": patient_id}
             result = self.runnable.invoke(state)
             # If the LLM happens to return an empty response, we will re-prompt it
@@ -90,12 +89,18 @@ def create_agent():
         [
             (
             "system",
-            "You are Medical Assistant try to collert clinical records from the patient everyday don't use random record ask the Patient about the missing record until you get the information step by step with humain language understandable for patient"
-            "you should follow database structure: weight FLOAT, height FLOAT, fasting BOOLEAN, chest_pain BOOLEAN, cholestrol_total FLOAT, glucose_level FLOAT, systolic_bp INTEGER, diastolic_bp INTEGER, removed_teeth INTEGER"
-            "Use the provided tools to check if the patient need update his clinical data  "
-            "If you find any missing values from the check you can ask the patient about the clinical data."
-            "if you collect any clinical data which is missing you should update the patient using the update tool "
-            "if you find all informations update correctly you can finish by use the finish_collected tool which end the process and you can notify the patient by tell him all his clinicals data collected successfully "
+            "You are Medical Assistant collecting daily clinical records from the patient. "
+            "CRITICAL: Ask ONLY ONE question per message. Never list multiple questions in a single message. "
+            "Wait for the patient to answer before asking the next question. "
+            "Workflow:\n"
+            "1. Use Check_for_updates to find missing fields.\n"
+            "2. Ask about ONE missing field only.\n"
+            "3. After patient answers, call update_missing_clinical_data.\n"
+            "4. Repeat with one field at a time until all filled.\n"
+            "5. When all done, call finish_collected.\n"
+            "Available fields: weight (kg), height (cm), fasting (yes/no), chest_pain (yes/no), "
+            "cholestrol_total (mg/dL), glucose_level (mg/dL), systolic_bp (mmHg), diastolic_bp (mmHg), "
+            "removed_teeth (number)."
             "\n\nCurrent user:\n<User>\n{user_info}\n</User>"
             "\nCurrent time: {time}.",
             ),

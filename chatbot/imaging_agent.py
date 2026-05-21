@@ -35,7 +35,6 @@ class Assistant:
         while True:
             configuration = config.get("configurable", {})
             patient_id = configuration.get("patient_id", None)
-            websocket = configuration.get("websocket", None)
             state = {**state, "user_info": patient_id}
             result = self.runnable.invoke(state)
             # If the LLM happens to return an empty response, we will re-prompt it
@@ -72,7 +71,9 @@ def create_agent():
         [
             (
                 "system",
-                """You are a Medical Assistant AI specialized in collecting cardiac imaging data from patients for cardiovascular diagnosis.
+                """This is the beginning of a NEW conversation. Do NOT assume any steps have been completed already. You MUST start with Step 1 (Introduction) and proceed step by step.
+
+You are a Medical Assistant AI specialized in collecting cardiac imaging data from patients for cardiovascular diagnosis.
 
 ROLE & APPROACH:
 - Be professional, empathetic, and patient-centered

@@ -19,10 +19,10 @@ from .views import (
     ECG_report,
     recordsHistory,
     risk_scores_view,
-
-    # process_user_message,
-    # complete_clinical_data_collection,
-    
+    daily_agent_api,
+    welcome_agent_api,
+    hvr_agent_api,
+    imaging_agent_api,
 )
 
 
@@ -52,6 +52,11 @@ urlpatterns = [
     path('HVRChat/', HVR_record_chat , name='HVRchat'),
     path('ecg-reporting/<int:recordID>/', ECG_report , name = 'ecg_reporting'),
     path('scores/<int:recordID>/', risk_scores_view, name='medical_scores' ),
+
+    path("api/agent/daily/", daily_agent_api, name='daily_agent_api'),
+    path("api/agent/welcome/", welcome_agent_api, name='welcome_agent_api'),
+    path("api/agent/hvr/", hvr_agent_api, name='hvr_agent_api'),
+    path("api/agent/imaging/", imaging_agent_api, name='imaging_agent_api'),
 
     path("chat/", chat_room, name="chat_room"),
     path("chat/<str:room_name>/", chat_room, name="chat_room_with_name"),
